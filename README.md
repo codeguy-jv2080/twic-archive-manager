@@ -1,17 +1,9 @@
 # TWIC Archive Manager
 
-Windows-local TWIC archive manager starter using **FastAPI + SQLite**.
+Windows-local TWIC archive manager using FastAPI and SQLite.
 
-The finished Windows package will download and validate TWIC PGN and/or CBV ZIP archives, extract them, optionally keep the ZIPs, track status in SQLite, combine managed PGNs, and schedule unattended runs through Windows Task Scheduler.
+It will download, verify, extract, retain or delete ZIPs by profile setting, track TWIC archives, combine managed PGNs, and run scheduled updates.
 
-The finished packaged app must not require .NET or Python to be installed by its user.
+The current repository is a starter, not the finished downloader. The full build requirements are in [CODEX_BUILD_HANDOFF.md](CODEX_BUILD_HANDOFF.md).
 
-## Current state
-
-This repository is a starter and build handoff, not a finished downloader. It currently provides a FastAPI local shell, SQLite initialization, profile storage, and a plain HTML/CSS/JavaScript starter UI.
-
-The complete requirements are in [CODEX_BUILD_HANDOFF.md](CODEX_BUILD_HANDOFF.md).
-
-## Scope
-
-This app manages only TWIC archives. Arbitrary-PGN splitting, resizing, editing, conversion, and organization belong in the separate PGN Archive and File-Management Utility.
+This project handles TWIC archives only. General PGN file work belongs in the separate PGN Archive and File-Management Utility.

@@ -1,6 +1,6 @@
-# Managed archive layout
+# Archive layout
 
-Each profile chooses an archive root. SQLite stores profile and artifact state locally; archive files remain inside the selected root.
+The selected archive root contains only managed archive material:
 
 ```text
 <ArchiveRoot>/
@@ -17,4 +17,4 @@ Each profile chooses an archive root. SQLite stores profile and artifact state l
     sync.lock
 ```
 
-Verified ZIP files remain by default. A profile can disable keeping ZIPs; deletion occurs only after verified extraction succeeds.
+ZIPs remain after extraction by default. When the profile turns that option off, a ZIP is deleted only after verified extraction succeeds.
