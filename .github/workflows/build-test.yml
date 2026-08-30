@@ -1,0 +1,23 @@
+name: build-test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore starter solution
+        run: dotnet restore TwicArchiveManager.sln
+      - name: Build starter solution
+        run: dotnet build TwicArchiveManager.sln --configuration Release --no-restore

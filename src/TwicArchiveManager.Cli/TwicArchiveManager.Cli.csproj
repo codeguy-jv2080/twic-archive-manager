@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>twic-archive-manager-cli</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../TwicArchiveManager.Core/TwicArchiveManager.Core.csproj" />
+    <ProjectReference Include="../TwicArchiveManager.Infrastructure/TwicArchiveManager.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

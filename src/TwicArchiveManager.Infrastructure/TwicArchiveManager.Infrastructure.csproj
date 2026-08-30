@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../TwicArchiveManager.Core/TwicArchiveManager.Core.csproj" />
+  </ItemGroup>
+  <PropertyGroup>
+    <Description>Filesystem, manifest, source-catalog, download, extraction, and scheduling adapters.</Description>
+  </PropertyGroup>
+</Project>

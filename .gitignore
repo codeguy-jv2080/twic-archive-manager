@@ -1,0 +1,25 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+TestResults/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# IDEs
+.vs/
+.idea/
+.vscode/
+
+# Local profiles and managed archive state
+appsettings.Local.json
+*.local.json
+.twic-archive-manager/
+Downloads/
+Extracted/
+Combined/
+
+# OS files
+.DS_Store
+Thumbs.db
