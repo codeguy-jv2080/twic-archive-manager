@@ -1,6 +1,6 @@
 # Managed archive layout
 
-Each named profile points to an archive root chosen by the user. The root is portable between Windows and Ubuntu because the manifest contains relative paths.
+Each profile chooses an archive root. SQLite stores profile and artifact state locally; archive files remain inside the selected root.
 
 ```text
 <ArchiveRoot>/
@@ -8,17 +8,13 @@ Each named profile points to an archive root chosen by the user. The root is por
     PGN/
     CBV/
   Extracted/
-    PGN/<issue-number>/
-    CBV/<issue-number>/
+    PGN/<issue>/
+    CBV/<issue>/
   Combined/
     twic-all.pgn
   .twic-archive-manager/
-    manifest.json
-    manifest.json.bak
-    sync.lock
     logs/
+    sync.lock
 ```
 
-ZIP files remain by default. A profile can turn extraction off, but the application must still validate and record downloaded ZIPs. PGNs are combined only when their managed extracted files are verified; CBVs are always retained individually and never merged.
-
-The app must use same-filesystem `.part` files/staging locations and atomic replacement for final ZIPs, extracted directories, manifest updates, and the combined PGN.
+Verified ZIP files remain by default. A profile can disable keeping ZIPs; deletion occurs only after verified extraction succeeds.

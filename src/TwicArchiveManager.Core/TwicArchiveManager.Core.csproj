@@ -1,5 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Description>Dependency-free domain models and planning rules for TWIC Archive Manager.</Description>
-  </PropertyGroup>
-</Project>

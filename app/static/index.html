@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TWIC Archive Manager</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main>
+    <h1>TWIC Archive Manager</h1>
+    <p id="connection-status">Checking local application…</p>
+
+    <section>
+      <h2>Archive profile</h2>
+      <form id="profile-form">
+        <label>Name <input name="name" required maxlength="100" placeholder="Main TWIC archive"></label>
+        <label>Archive folder <input name="archive_root" required placeholder="C:\\Chess\\TWIC or \\server\\chess\\TWIC"></label>
+        <label><input type="checkbox" name="download_pgn" checked> PGN</label>
+        <label><input type="checkbox" name="download_cbv"> CBV</label>
+        <label><input type="checkbox" name="extract_archives" checked> Extract archives</label>
+        <label><input type="checkbox" name="keep_zip_files" checked> Keep ZIPs after extraction</label>
+        <label><input type="checkbox" name="combine_after_sync"> Combine PGNs after sync</label>
+        <button type="submit">Save profile</button>
+      </form>
+      <p id="form-message" role="status"></p>
+    </section>
+
+    <section>
+      <h2>Saved profiles</h2>
+      <ul id="profiles"></ul>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
