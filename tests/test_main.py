@@ -80,6 +80,7 @@ def test_save_does_not_claim_an_unapplied_schedule(tmp_path: Path, monkeypatch) 
 
 def test_scheduler_uses_the_packaged_executable_for_nuitka(monkeypatch) -> None:
     monkeypatch.setitem(main.__dict__, "__compiled__", object())
-    monkeypatch.setattr(main.sys, "executable", r"C:\\portable\\TWIC Archive Manager.exe")
+    monkeypatch.setattr(main.sys, "argv", [r"C:\portable\TWIC Archive Manager.exe"])
+    monkeypatch.setattr(main.sys, "executable", r"C:\portable\python.exe")
 
-    assert main._scheduler_executable() == r"C:\\portable\\TWIC Archive Manager.exe"
+    assert main._scheduler_executable() == r"C:\portable\TWIC Archive Manager.exe"

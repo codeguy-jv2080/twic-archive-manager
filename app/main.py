@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from .database import (
     create_profile,
@@ -88,6 +89,9 @@ def _scheduler_executable() -> str | tuple[str, ...]:
         or "__compiled__" in globals()
         or hasattr(main_module, "__compiled__")
     ):
+        launched_executable = Path(sys.argv[0])
+        if launched_executable.suffix.casefold() == ".exe":
+            return str(launched_executable.resolve())
         return sys.executable
     return (sys.executable, "-m", "app")
 
