@@ -1,21 +1,22 @@
+"""One entry point for the desktop window and headless scheduled commands."""
+
 from __future__ import annotations
 
-import threading
-import webbrowser
-
-import uvicorn
-
-from .main import app
+import sys
+from collections.abc import Sequence
 
 
-HOST = "127.0.0.1"
-PORT = 8765
+def main(argv: Sequence[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments:
+        from .cli import main as cli_main
 
+        return cli_main(arguments)
 
-def main() -> None:
-    threading.Timer(0.75, lambda: webbrowser.open(f"http://{HOST}:{PORT}")).start()
-    uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
+    from .main import run_desktop_app
+
+    return run_desktop_app()
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

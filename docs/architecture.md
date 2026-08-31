@@ -1,14 +1,21 @@
 # Architecture
 
-The app serves a local browser interface from `127.0.0.1`.
+TWIC Archive Manager is a normal Windows desktop program. It does not start a
+browser, local server, FastAPI process, or localhost listener.
 
 ```mermaid
 flowchart TD
-  UI["Local UI"] --> API["FastAPI"]
-  API --> DB["SQLite state"]
-  API --> Files["TWIC archive root"]
+  Window["PySide6 desktop window"] --> Services["Shared app services"]
+  CLI["Headless CLI / Task Scheduler"] --> Services
+  Services --> DB["SQLite Saved Setups and schedules"]
+  Services --> TWIC["Official TWIC archive page"]
+  Services --> Files["Selected archive root"]
 ```
 
-SQLite holds profiles and artifact state in the user's local application-data folder. ZIPs, extracted files, logs, and the combined PGN live under the selected archive root.
+SQLite holds Saved Setups and schedules in the current user's local
+application-data folder. The actual ZIPs and extracted files are the source of
+truth for completed downloads and extractions.
 
-The UI and CLI call the same synchronization services. The packaged application starts locally and opens its interface for the user.
+The window and the CLI call the same services. Starting the program with no
+arguments opens the desktop window. Starting it with `sync` or `combine` stays
+headless for Windows Task Scheduler.

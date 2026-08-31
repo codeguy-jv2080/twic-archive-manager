@@ -3,12 +3,14 @@
 venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .ruff_cache/
 
 # Build output
 build/
 dist/
+deployment/
 *.spec
 
 # IDEs

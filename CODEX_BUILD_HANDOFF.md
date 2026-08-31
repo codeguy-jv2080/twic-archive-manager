@@ -1,41 +1,39 @@
-# TWIC Archive Manager — Build Specification
+# TWIC Archive Manager — Build Handoff
 
 ## Product
 
-Build a **Windows-local TWIC Archive Manager** using **FastAPI, SQLite, and plain HTML/CSS/JavaScript**.
+Build a portable Windows desktop application named TWIC Archive Manager using Python, PySide6, and SQLite.
 
-The application runs only on the user's computer and listens only on `127.0.0.1`. Package the finished application as a Windows executable or installer that includes its runtime and dependencies.
+It is a standalone desktop window for manual use. It does not use a browser, FastAPI, HTTP, or a localhost server. Keep it portable until the application is finished.
 
-## Purpose
+## What it does
 
 Manage archives from [The Week in Chess](https://theweekinchess.com/twic):
 
 - Download PGN ZIPs, CBV ZIPs, or both.
-- Choose an inclusive issue range, a starting issue through newest, latest N issues, or missing/damaged files.
+- Choose an inclusive issue range, a starting issue through newest, or the latest N issues.
 - Extract ZIPs when selected.
-- Include a **Keep ZIPs after extraction** option, enabled by default.
-- Track profiles, downloads, extraction, failures, and combined-PGN state in SQLite.
-- Combine managed TWIC PGNs into `twic-all.pgn` for ChessBase or SCID import.
+- Keep ZIPs after extraction by default, with an option to delete them after extraction.
+- Store Saved Setups and schedules in SQLite.
+- Combine extracted PGNs into `twic-all.pgn` for ChessBase or SCID import.
 - Work with local folders, mapped drives, and UNC paths.
-- Run manually through the local UI or unattended through a CLI launched by Windows Task Scheduler.
+- Run from the desktop window or headlessly through Windows Task Scheduler.
 
-This app manages TWIC archives only. Do not add arbitrary-PGN splitting, resizing, editing, conversion, organization, deduplication, CBV merging, or CBV conversion.
+## Saved Setups and storage
 
-## Storage
+Store SQLite data in the current user's local application-data folder, not in an archive root or network share.
 
-Store SQLite data in the current user's local application-data folder. Keep the database off archive roots and network shares.
+Saved Setups have no fixed limit. Each stores:
 
-Each profile stores:
-
-- Profile name and archive root
+- Name and archive root
 - PGN/CBV selection
 - Extract setting
 - Keep-ZIPs setting
-- Default selection mode
+- Default selection mode and value
 - Combine-after-sync setting
 - Schedule settings
 
-Archive files use this layout:
+Use this archive layout:
 
 ```text
 <ArchiveRoot>/
@@ -43,69 +41,59 @@ Archive files use this layout:
     PGN/
     CBV/
   Extracted/
-    PGN/<issue>/
-    CBV/<issue>/
+    PGN/
+    CBV/
   Combined/
     twic-all.pgn
   .twic-archive-manager/
     logs/
-    sync.lock
 ```
 
 ## Catalog, download, and extraction
 
-Read the official TWIC archive page with an HTML parser. Capture issue number, publication date, PGN URL, CBV URL, and game count when available. Do not guess URLs. If the catalog cannot be loaded or parsed, report that failure and do not say the archive is current.
+Read the official TWIC archive page and capture the issue number, publication date, PGN URL, CBV URL, and game count when available.
 
-For each file:
+Download selected ZIPs directly into the matching Downloads folder. Extract ZIPs when selected. When Keep ZIPs is off, delete the ZIP after extraction.
 
-1. Download to a same-folder `.part` file.
-2. Use timeouts, cancellation, and retry/backoff.
-3. Verify nonzero size, ZIP structure/CRC, and the expected PGN or CBV entry.
-4. Compute a hash and atomically rename the verified `.part` file to its final ZIP name.
-5. Record the verified result in SQLite.
-6. When extraction is selected, use a staging folder, reject ZIP-slip paths, validate output, and atomically move it into the final issue folder.
-7. When Keep ZIPs is off, delete the ZIP only after successful verified extraction.
+## Desktop window
 
-Detect damaged, partial, zero-byte, and metadata-mismatched files on later runs. Select them for repair. Preserve corrupt copies with a `.corrupt-<timestamp>` suffix.
+Provide:
 
-Before a run, check that the archive root exists, is writable, has usable free space, and allows a temporary-file rename. For scheduled jobs, warn that a mapped drive may not exist and recommend a UNC path.
-
-## UI and CLI
-
-The UI needs:
-
-- Folder selection plus editable UNC path
-- Profiles
+- Folder selection plus an editable UNC path
+- Saved Setup creation, editing, and deletion
 - PGN/CBV, extraction, and Keep-ZIPs controls
-- From/To, From-through-newest, Latest N, and missing/damaged selection
-- A review table with issue, date, game count, format status, and selected state
+- From/To, From-through-newest, and Latest N selection
 - Latest 1 as the default selection
-- Progress, cancellation, retry, logs, and clear errors
-- Status view and manual PGN combination
+- Progress, cancellation, logs, and clear errors
+- Progress, activity messages, and a manual PGN-combine action
 - Schedule creation, viewing, and removal
 
-The CLI must provide:
+## Headless CLI
+
+The scheduler must run headlessly: no browser and no desktop window.
+
+Provide:
 
 ```text
 twic-archive-manager sync --profile <name>
 twic-archive-manager combine --profile <name>
-twic-archive-manager verify --profile <name>
-twic-archive-manager status --profile <name>
 ```
 
-Return these exit codes:
+Use these exit codes:
 
 ```text
 0  completed successfully or nothing needed
 1  one or more requested files failed
 2  invalid profile or configuration
-3  archive root unavailable or locked
+3  archive root unavailable
 4  canceled
 ```
 
 ## PGN combination
 
-Combine only extracted PGNs managed by this application. Stream them in ascending issue order, write a temporary combined file, then atomically replace `twic-all.pgn` only after success. Preserve the prior combined file when rebuilding fails. Keep CBV files separate.
+PGN combination is optional and off by default. The user can combine PGNs manually or enable Combine-after-sync for a Saved Setup.
+
+Combine extracted PGNs in ascending issue order into `twic-all.pgn`. Keep CBV files separate.
 
 ## Project layout
 
@@ -113,9 +101,10 @@ Combine only extracted PGNs managed by this application. Stream them in ascendin
 app/
   main.py
   launcher.py
+  cli.py
   database.py
   services/
-  static/
+  ui/
 tests/
 docs/
 scripts/
@@ -124,6 +113,6 @@ pyproject.toml
 
 ## Completion checks
 
-- Test catalog parsing, all selection modes, ZIP verification, ZIP-slip rejection, damaged-file repair, SQLite persistence, PGN ordering, UNC preflight, CLI exit codes, and schedule command generation.
-- Run a real small TWIC download before declaring the application complete.
-- Build a Windows package and state its artifact path.
+- Test catalog parsing, selection modes, SQLite persistence, PGN ordering, CLI exit codes, and schedule command generation.
+- Run a real small TWIC download.
+- Build a portable Windows executable and state its artifact path.

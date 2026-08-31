@@ -6,17 +6,15 @@ build-backend = "setuptools.build_meta"
 name = "twic-archive-manager"
 version = "0.1.0"
 description = "Windows-local TWIC archive manager"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
-  "fastapi",
-  "uvicorn[standard]",
+  "PySide6>=6.8",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "httpx",
   "pytest",
-  "pyinstaller",
+  "nuitka",
 ]
 
 [project.scripts]

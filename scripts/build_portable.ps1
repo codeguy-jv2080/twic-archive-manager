@@ -1,0 +1,67 @@
+param(
+    [string]$Python = (Join-Path $PSScriptRoot "..\.venv\Scripts\python.exe")
+)
+
+$ErrorActionPreference = "Stop"
+
+$projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$pythonPath = (Resolve-Path $Python).Path
+$iconPath = Join-Path $projectRoot ".venv\Lib\site-packages\PySide6\scripts\deploy_lib\pyside_icon.ico"
+$distRoot = Join-Path $projectRoot "dist"
+$deploymentRoot = Join-Path $projectRoot "deployment"
+$stagedFolder = Join-Path $deploymentRoot "twic_archive_manager.dist"
+$portableFolder = Join-Path $distRoot "TWIC Archive Manager"
+$generatedExecutable = Join-Path $stagedFolder "TWIC Archive Manager.exe"
+
+if (-not (Test-Path -LiteralPath $iconPath)) {
+    throw "PySide6 deployment icon not found: $iconPath"
+}
+
+Push-Location $projectRoot
+try {
+    New-Item -ItemType Directory -Force -Path $distRoot | Out-Null
+    if (Test-Path -LiteralPath $deploymentRoot) {
+        Remove-Item -LiteralPath $deploymentRoot -Recurse -Force
+    }
+
+    $oldCacheDirectory = $env:NUITKA_CACHE_DIR
+    $env:NUITKA_CACHE_DIR = Join-Path $projectRoot "build\nuitka-cache"
+    $outputDirectoryOption = "--output-dir=$deploymentRoot"
+    $outputNameOption = "--output-filename=TWIC Archive Manager.exe"
+    $iconOption = "--windows-icon-from-ico=$iconPath"
+    & $pythonPath -m nuitka `
+        "$projectRoot\twic_archive_manager.py" `
+        --follow-imports `
+        --enable-plugin=pyside6 `
+        $outputDirectoryOption `
+        $outputNameOption `
+        --standalone `
+        --windows-console-mode=disable `
+        --noinclude-qt-translations `
+        --noinclude-dlls=*.cpp.o `
+        --noinclude-dlls=*.qsb `
+        $iconOption `
+        --include-qt-plugins=platforminputcontexts `
+        --assume-yes-for-downloads
+    $deployExitCode = $LASTEXITCODE
+
+    if ($deployExitCode -ne 0 -or -not (Test-Path -LiteralPath $generatedExecutable)) {
+        throw "Qt deployment did not produce $generatedExecutable"
+    }
+
+    if (Test-Path -LiteralPath $portableFolder) {
+        Remove-Item -LiteralPath $portableFolder -Recurse -Force
+    }
+    Move-Item -LiteralPath $stagedFolder -Destination $portableFolder
+}
+finally {
+    if ($null -eq $oldCacheDirectory) {
+        Remove-Item Env:NUITKA_CACHE_DIR -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:NUITKA_CACHE_DIR = $oldCacheDirectory
+    }
+    Pop-Location
+}
+
+Write-Host "Built: $projectRoot\dist\TWIC Archive Manager\TWIC Archive Manager.exe"
