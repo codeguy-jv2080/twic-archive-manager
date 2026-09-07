@@ -1,23 +1,25 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from html.parser import HTMLParser
 import re
 from typing import Callable
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 
 CATALOG_URL = "https://theweekinchess.com/twic"
+ZIP_BASE_URL = "https://theweekinchess.com/zips"
+_ZIP_PATH_RE = re.compile(r"^/zips/twic([1-9]\d*)(?:g|c6)\.zip$", re.IGNORECASE)
 
 
 class CatalogError(RuntimeError):
-    """The official TWIC archive page could not be read or understood."""
+    """The newest TWIC issue number could not be determined."""
 
 
 @dataclass(frozen=True, slots=True)
 class TwicIssue:
-    """One downloadable issue listed on the official TWIC archive page."""
+    """The download addresses for one numbered TWIC issue."""
 
     issue_number: int
     publication_date: str | None
@@ -26,154 +28,72 @@ class TwicIssue:
     game_count: int | None
 
 
-@dataclass(slots=True)
-class _Cell:
-    text: list[str] = field(default_factory=list)
-    links: list[tuple[str, str]] = field(default_factory=list)
+def numbered_issue(issue_number: int) -> TwicIssue:
+    """Construct the official ZIP addresses without consulting an archive list."""
 
-    def rendered_text(self) -> str:
-        return " ".join("".join(self.text).split())
+    if issue_number < 1:
+        raise ValueError("Issue numbers must be at least 1.")
+    return TwicIssue(
+        issue_number=issue_number,
+        publication_date=None,
+        pgn_url=f"{ZIP_BASE_URL}/twic{issue_number}g.zip",
+        cbv_url=f"{ZIP_BASE_URL}/twic{issue_number}c6.zip",
+        game_count=None,
+    )
 
 
-class _ArchiveTableParser(HTMLParser):
-    """Small table parser kept deliberately independent of page styling."""
+class _LatestIssueParser(HTMLParser):
+    """Read numbered ZIP links wherever they appear, without table assumptions."""
 
-    def __init__(self) -> None:
+    def __init__(self, base_url: str) -> None:
         super().__init__(convert_charrefs=True)
-        self.rows: list[list[_Cell]] = []
-        self._row: list[_Cell] | None = None
-        self._cell: _Cell | None = None
-        self._cell_depth = 0
-        self._link_href: str | None = None
-        self._link_text: list[str] | None = None
+        self.base_url = base_url
+        self.latest_issue = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        tag = tag.lower()
-        if tag == "tr":
-            self._row = []
-            self._cell = None
-            self._cell_depth = 0
-        elif tag in {"td", "th"} and self._row is not None:
-            if self._cell is None:
-                self._cell = _Cell()
-                self._row.append(self._cell)
-            self._cell_depth += 1
-        elif tag == "a" and self._cell is not None:
-            attributes = dict(attrs)
-            self._link_href = attributes.get("href")
-            self._link_text = []
-
-    def handle_endtag(self, tag: str) -> None:
-        tag = tag.lower()
-        if tag == "a" and self._cell is not None and self._link_text is not None:
-            if self._link_href:
-                self._cell.links.append(("".join(self._link_text).strip(), self._link_href))
-            self._link_href = None
-            self._link_text = None
-        elif tag in {"td", "th"} and self._cell is not None:
-            self._cell_depth -= 1
-            if self._cell_depth <= 0:
-                self._cell = None
-                self._cell_depth = 0
-        elif tag == "tr" and self._row is not None:
-            if self._row:
-                self.rows.append(self._row)
-            self._row = None
-            self._cell = None
-            self._cell_depth = 0
-
-    def handle_data(self, data: str) -> None:
-        if self._cell is not None:
-            self._cell.text.append(data)
-        if self._link_text is not None:
-            self._link_text.append(data)
-
-
-_ISSUE_RE = re.compile(r"^\s*(?:twic\s*)?(\d+)\s*$", re.IGNORECASE)
-_DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
-_NUMBER_RE = re.compile(r"\b\d{1,3}(?:,\d{3})*\b|\b\d+\b")
-
-
-def _format_for_link(label: str, href: str) -> str | None:
-    value = f"{label} {href}".lower()
-    if "pgn" in value:
-        return "pgn"
-    if "cbv" in value or "chessbase" in value:
-        return "cbv"
-    return None
-
-
-def _game_count(cells: list[_Cell]) -> int | None:
-    # The current TWIC table has Games as its sixth column.  Fall back to
-    # the first number after the date for older/newer table variants.
-    candidates = [cells[5]] if len(cells) > 5 else cells[2:]
-    for cell in candidates:
-        match = _NUMBER_RE.search(cell.rendered_text())
+        if tag != "a":
+            return
+        href = dict(attrs).get("href")
+        if not href:
+            return
+        address = urlparse(urljoin(self.base_url, href))
+        if address.scheme not in {"http", "https"} or address.hostname not in {
+            "theweekinchess.com", "www.theweekinchess.com",
+        }:
+            return
+        match = _ZIP_PATH_RE.fullmatch(address.path)
         if match:
-            return int(match.group(0).replace(",", ""))
-    return None
+            self.latest_issue = max(self.latest_issue, int(match.group(1)))
 
 
-def parse_catalog(html: str, *, base_url: str = CATALOG_URL) -> list[TwicIssue]:
-    """Parse the TWIC archive table into unique issues, newest first."""
+def parse_latest_issue(html: str, *, base_url: str = CATALOG_URL) -> int:
+    """Use the page only to find the newest issue, never to limit a chosen range."""
 
-    parser = _ArchiveTableParser()
+    parser = _LatestIssueParser(base_url)
     parser.feed(html)
     parser.close()
-
-    parsed: dict[int, TwicIssue] = {}
-    for cells in parser.rows:
-        if not cells:
-            continue
-        issue_match = _ISSUE_RE.match(cells[0].rendered_text())
-        if not issue_match:
-            continue
-
-        issue_number = int(issue_match.group(1))
-        date_match = _DATE_RE.search(" ".join(cell.rendered_text() for cell in cells))
-        urls: dict[str, str] = {}
-        for cell in cells:
-            for label, href in cell.links:
-                archive_format = _format_for_link(label, href)
-                if archive_format:
-                    urls[archive_format] = urljoin(base_url, href)
-
-        # Ignore ordinary article/summary tables which happen to start with a
-        # number.  A catalog row has at least one downloadable archive link.
-        if not urls:
-            continue
-
-        parsed[issue_number] = TwicIssue(
-            issue_number=issue_number,
-            publication_date=date_match.group(0) if date_match else None,
-            pgn_url=urls.get("pgn"),
-            cbv_url=urls.get("cbv"),
-            game_count=_game_count(cells),
-        )
-
-    issues = sorted(parsed.values(), key=lambda issue: issue.issue_number, reverse=True)
-    if not issues:
-        raise CatalogError("No TWIC archive issues were found on the official archive page.")
-    return issues
+    if not parser.latest_issue:
+        raise CatalogError("Could not determine the newest TWIC issue from the official page.")
+    return parser.latest_issue
 
 
-def fetch_catalog(
+def fetch_latest_issue(
     *,
     url: str = CATALOG_URL,
     timeout: float = 30.0,
     opener: Callable[..., object] = urlopen,
-) -> list[TwicIssue]:
-    """Fetch and parse the official TWIC catalog using the standard library."""
+) -> int:
+    """Fetch the newest issue number for selections that need it."""
 
     request = Request(url, headers={"User-Agent": "TWIC Archive Manager"})
     try:
         with opener(request, timeout=timeout) as response:  # type: ignore[union-attr]
             body = response.read()
     except OSError as error:
-        raise CatalogError(f"Could not read the TWIC archive page: {error}") from error
+        raise CatalogError(f"Could not determine the newest TWIC issue: {error}") from error
 
     try:
         html = body.decode("utf-8", errors="replace")
     except AttributeError as error:
-        raise CatalogError("The TWIC archive page returned an unreadable response.") from error
-    return parse_catalog(html, base_url=url)
+        raise CatalogError("The TWIC page returned an unreadable response.") from error
+    return parse_latest_issue(html, base_url=url)

@@ -263,6 +263,7 @@ LoadSetups = Callable[[], Sequence[SavedSetup | Mapping[str, object]]]
 SaveSetup = Callable[[SavedSetup], SavedSetup | Mapping[str, object] | None]
 DeleteSetup = Callable[[SavedSetup], None]
 SyncSetup = Callable[[SavedSetup, SelectionRequest, OperationReporter], object]
+ExtractZips = Callable[[SavedSetup, OperationReporter], object]
 CombinePgns = Callable[[SavedSetup, OperationReporter], object]
 ApplySchedule = Callable[[SavedSetup, str], object]
 ViewSchedule = Callable[[SavedSetup], object]
@@ -280,7 +281,7 @@ def _service_not_connected(*_: object) -> None:
 class DesktopCallbacks:
     """Small boundary between the desktop window and application services.
 
-    ``sync`` and ``combine`` run in a worker thread.  The implementation may
+    ``sync``, ``extract``, and ``combine`` run in a worker thread. The implementation may
     report progress through the supplied :class:`OperationReporter` and should
     not touch Qt widgets directly.
     """
@@ -289,6 +290,7 @@ class DesktopCallbacks:
     save_setup: SaveSetup = _service_not_connected
     delete_setup: DeleteSetup = _service_not_connected
     sync: SyncSetup = _service_not_connected
+    extract: ExtractZips = _service_not_connected
     combine: CombinePgns = _service_not_connected
     apply_schedule: ApplySchedule = _service_not_connected
     view_schedule: ViewSchedule = _service_not_connected
@@ -630,27 +632,39 @@ class TwicArchiveManagerWindow(QMainWindow):
         layout.setVerticalSpacing(10)
 
         self.sync_button = QPushButton("Sync", group)
+        self.extract_button = QPushButton("Extract ZIP", group)
         self.combine_button = QPushButton("Create Combined PGN", group)
 
         for button in (
             self.sync_button,
+            self.extract_button,
             self.combine_button,
         ):
             button.setMinimumWidth(190)
             button.setMaximumWidth(240)
+        # Keep the three actions and theme control readable at the existing
+        # normal window width without shrinking the longer Combine label.
+        self.sync_button.setMinimumWidth(110)
+        self.extract_button.setMinimumWidth(110)
 
         self.sync_button.setProperty("runAction", True)
+        self.extract_button.setProperty("runAction", True)
         self.combine_button.setProperty("runAction", True)
         self.sync_button.clicked.connect(self.start_sync)
+        self.extract_button.clicked.connect(self.start_extract)
         self.combine_button.clicked.connect(self.start_combine)
+        self.extract_button.setToolTip(
+            "Extract downloaded ZIPs only; no downloads or combining."
+        )
 
         layout.addWidget(self.sync_button, 0, 0)
-        layout.addWidget(self.combine_button, 0, 1)
-        layout.setColumnStretch(2, 1)
+        layout.addWidget(self.extract_button, 0, 1)
+        layout.addWidget(self.combine_button, 0, 2)
+        layout.setColumnStretch(3, 1)
         self.theme_button = QPushButton("Light / Dark", group)
         self.theme_button.setFixedWidth(120)
         self.theme_button.clicked.connect(self.toggle_theme)
-        layout.addWidget(self.theme_button, 0, 3)
+        layout.addWidget(self.theme_button, 0, 4)
         return group
 
     def _build_activity_group(self) -> QGroupBox:
@@ -935,6 +949,16 @@ class TwicArchiveManagerWindow(QMainWindow):
         )
 
     @Slot()
+    def start_extract(self) -> None:
+        setup = self._selected_setup_or_error()
+        if setup is None:
+            return
+        self._start_operation(
+            "Extracting downloaded ZIPs…",
+            lambda reporter: self._callbacks.extract(setup, reporter),
+        )
+
+    @Slot()
     def start_combine(self) -> None:
         setup = self._selected_setup_or_error()
         if setup is None:
@@ -1038,6 +1062,7 @@ class TwicArchiveManagerWindow(QMainWindow):
         self.setups_panel.setEnabled(not running)
         self.selection_group.setEnabled(not running)
         self.sync_button.setEnabled(not running)
+        self.extract_button.setEnabled(not running)
         self.combine_button.setEnabled(not running)
         self.apply_schedule_button.setEnabled(not running)
         self.view_schedule_button.setEnabled(not running)

@@ -20,6 +20,7 @@ from .services.sync import (
     Selection,
     SyncEvent,
     combine_profile,
+    extract_profile,
     sync_profile,
 )
 from .ui.main_window import (
@@ -96,6 +97,20 @@ def _scheduler_executable() -> str | tuple[str, ...]:
             return str(launched_executable.resolve())
         return sys.executable
     return (sys.executable, "-m", "app")
+
+
+def _extract_message(result: object) -> str:
+    if getattr(result, "cancelled", False):
+        return "Extraction canceled."
+    if getattr(result, "total", None) == 0:
+        return "No downloaded TWIC ZIP files found for the selected formats."
+    extracted = int(getattr(result, "extracted", 0))
+    skipped = int(getattr(result, "skipped", 0))
+    failures = list(getattr(result, "failures", []))
+    return (
+        f"Extraction complete: {extracted} ZIP file(s) extracted, "
+        f"{skipped} already extracted, {len(failures)} failed."
+    )
 
 
 def create_desktop_callbacks() -> DesktopCallbacks:
@@ -224,6 +239,17 @@ def create_desktop_callbacks() -> DesktopCallbacks:
         reporter.progress(1, 1, message)
         return {"message": message}
 
+    def extract(setup: SavedSetup, reporter: OperationReporter) -> dict[str, str]:
+        result = extract_profile(
+            _profile_identifier(setup),
+            on_event=lambda event: _report_sync_event(reporter, event),
+            is_cancelled=lambda: reporter.cancelled,
+        )
+        message = _extract_message(result)
+        total = max(result.total, 1)
+        reporter.progress(total, total, message)
+        return {"message": message}
+
     def apply_schedule(setup: SavedSetup, schedule_text: str) -> dict[str, str]:
         info = set_schedule(
             setup.name,
@@ -258,6 +284,7 @@ def create_desktop_callbacks() -> DesktopCallbacks:
         save_setup=save_setup,
         delete_setup=delete_setup,
         sync=sync,
+        extract=extract,
         combine=combine,
         apply_schedule=apply_schedule,
         view_schedule=view_schedule,

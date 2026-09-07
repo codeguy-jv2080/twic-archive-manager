@@ -1,9 +1,11 @@
 """Optional background smoke test of the canonical Windows executable."""
 
 import os
+import json
 from pathlib import Path
 import subprocess
 import sqlite3
+import zipfile
 
 import pytest
 
@@ -44,6 +46,41 @@ def test_packaged_combine_and_archive_contention(tmp_path: Path, monkeypatch) ->
     assert layout.combined_pgn_path.read_text(encoding="utf-8") == expected
     released = run("combine", "--profile", "Package test")
     assert released.returncode == 0, released.stderr
+
+
+@pytest.mark.skipif(not os.environ.get("TWIC_PACKAGED_EXE"), reason="Requires a built Windows executable")
+def test_packaged_auto_combine_keeps_available_pgn_after_archive_failure(tmp_path, monkeypatch):
+    executable = Path(os.environ["TWIC_PACKAGED_EXE"]).resolve(strict=True)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "appdata"))
+    initialize_database()
+    root = tmp_path / "archive"
+    create_profile(
+        name="Partial sync test", archive_root=str(root), download_pgn=True,
+        extract_archives=True, keep_zip_files=True, combine_after_sync=True,
+        default_selection_mode="range", default_selection_value="970-971",
+    )
+    layout = ArchiveLayout.create(root)
+    expected = '[Event "available"]\n'
+    with zipfile.ZipFile(layout.downloads("pgn") / "twic970g.zip", "w") as archive:
+        archive.writestr("twic970.pgn", expected)
+    # Both ZIP paths exist, so this executable test never makes a network request.
+    # The service tests separately exercise an unavailable download source.
+    (layout.downloads("pgn") / "twic971g.zip").write_bytes(b"Invalid ZIP fixture")
+
+    result = subprocess.run(
+        [str(executable), "sync", "--profile", "Partial sync test"],
+        capture_output=True, text=True, timeout=20,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+
+    assert result.returncode == 1, (result.stdout, result.stderr)
+    report = json.loads(result.stdout)
+    assert report["issues"] == [970, 971]
+    assert report["extracted"] == 1 and report["downloaded"] == 0
+    assert len(report["failures"]) == 1 and "TWIC 971 PGN" in report["failures"][0]
+    assert report["combined"]["pgn_files"] == 1
+    assert layout.combined_pgn_path.read_text(encoding="utf-8") == expected
+    assert (layout.extraction_directory("pgn") / "twic970.pgn").read_text(encoding="utf-8") == expected
 
 
 @pytest.mark.skipif(not os.environ.get("TWIC_INSTALLED_EXE"), reason="Requires the installed Windows executable")

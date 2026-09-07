@@ -1,15 +1,17 @@
 """The non-UI services used by the desktop app and command-line runner."""
 
 from .archive import NoExtractedPgns
-from .catalog import CATALOG_URL, CatalogError, TwicIssue, fetch_catalog, parse_catalog
+from .catalog import CATALOG_URL, CatalogError, TwicIssue, fetch_latest_issue, numbered_issue, parse_latest_issue
 from .sync import (
     ArchiveRootUnavailable,
     ConfigurationError,
+    ExtractResult,
     Selection,
     SyncCancelled,
     SyncResult,
     UnknownProfile,
     combine_profile,
+    extract_profile,
     select_issues,
     sync_profile,
 )
@@ -19,6 +21,7 @@ __all__ = [
     "ArchiveRootUnavailable",
     "CatalogError",
     "ConfigurationError",
+    "ExtractResult",
     "NoExtractedPgns",
     "Selection",
     "SyncCancelled",
@@ -26,8 +29,10 @@ __all__ = [
     "TwicIssue",
     "UnknownProfile",
     "combine_profile",
-    "fetch_catalog",
-    "parse_catalog",
+    "extract_profile",
+    "fetch_latest_issue",
+    "numbered_issue",
+    "parse_latest_issue",
     "select_issues",
     "sync_profile",
 ]

@@ -76,6 +76,10 @@ Open the **Archive location** you chose:
 
 If **Extract ZIP files** is unchecked, you get ZIPs only. The app does not add separate extraction folders for every issue.
 
+### Already downloaded the ZIPs and want to extract them now?
+
+Select the Saved Setup and click **Extract ZIP**. It unpacks the existing downloads for that setup's selected PGN/CBV formats, skipping already-extracted issues. It does not download anything or create a combined PGN. **Keep ZIP files after extraction** still applies; save any changes to that setting first. You do not need to enable the extraction option used by Sync. This manual button processes the ZIPs already there, regardless of **What to Download**.
+
 ## 5. Optional: make one combined PGN
 
 After extracting PGNs, click **Create Combined PGN**. The result is **Combined\twic-all.pgn** inside your archive folder.
@@ -121,7 +125,7 @@ To uninstall, use Windows **Settings → Apps**, find **TWIC Archive Manager**, 
 
 ## If something goes wrong
 
-- **No extracted PGN files are available to combine:** run Sync with **PGN** and **Extract ZIP files** enabled first.
+- **No extracted PGN files are available to combine:** if the PGN ZIPs are already downloaded, click **Extract ZIP** first. Otherwise, run Sync with **PGN** and **Extract ZIP files** enabled.
 - **A download fails:** read its Activity error and check your internet connection and archive location. Downloads are not automatically retried. An interrupted download can leave an incomplete ZIP; remove that affected ZIP before trying Sync again.
 - **Another operation is already using the archive folder:** let the other manual or scheduled operation finish before trying again.
 - **A scheduled run did not happen:** check **View Windows Task**, the chosen day/time, and whether the computer and archive folder were available.

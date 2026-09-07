@@ -5,7 +5,7 @@ import sys
 import pytest
 
 from app.services.archive_lock import ArchiveBusy, archive_operation
-from app.services.sync import combine_profile, sync_profile
+from app.services.sync import Selection, combine_profile, sync_profile
 
 
 def run_child(code: str, root: Path) -> subprocess.CompletedProcess[str]:
@@ -62,7 +62,7 @@ def test_sync_and_combine_share_the_archive_lock(tmp_path: Path, monkeypatch) ->
     profile = {"name": "Main", "archive_root": str(root), "download_pgn": True}
     with archive_operation(root):
         with pytest.raises(ArchiveBusy):
-            sync_profile(profile, catalog_loader=lambda: pytest.fail("Must not load catalog"))
+            sync_profile(profile, newest_issue_loader=lambda: pytest.fail("Must not read newest issue"))
         with pytest.raises(ArchiveBusy):
             combine_profile(profile)
     assert not root.exists()
@@ -72,9 +72,15 @@ def test_sync_exception_releases_archive(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("app.database.database_path", lambda: tmp_path / "state.db")
     profile = {"name": "Main", "archive_root": str(tmp_path / "archive"), "download_pgn": True}
 
-    def failed_catalog():
-        raise OSError("Test catalog failure")
+    def failed_newest_lookup():
+        raise OSError("Test newest-issue failure")
 
-    with pytest.raises(OSError, match="Test catalog failure"):
-        sync_profile(profile, catalog_loader=failed_catalog)
-    assert sync_profile(profile, catalog_loader=lambda: []).succeeded
+    with pytest.raises(OSError, match="Test newest-issue failure"):
+        sync_profile(profile, newest_issue_loader=failed_newest_lookup)
+    result = sync_profile(
+        profile,
+        selection=Selection.issue_range(970, 970),
+        newest_issue_loader=lambda: pytest.fail("A fixed range must not read the page"),
+        is_cancelled=lambda: True,
+    )
+    assert result.cancelled

@@ -83,12 +83,26 @@ def test_proportional_panels_keep_controls_and_checkbox_readable(desktop_applica
         for size in ((1180, 760), (1920, 1000), (900, 620)):
             window.resize(*size)
             desktop_application.processEvents()
+            if size[0] == 1180:
+                assert window.width() == 1180
             assert left.width() >= 540
             assert window.archive_root_edit.font() == original_font
             assert left.geometry().right() < work.geometry().left()
             assert window.centralWidget().rect().contains(left.geometry())
             assert window.centralWidget().rect().contains(work.geometry())
             _assert_checkbox_text_fits(window)
+
+            actions = (window.sync_button, window.extract_button, window.combine_button, window.theme_button)
+            for previous, following in zip(actions, actions[1:]):
+                assert previous.geometry().right() < following.geometry().left()
+                assert previous.geometry().center().y() == following.geometry().center().y()
+            for button in actions:
+                option = QStyleOptionButton()
+                button.initStyleOption(option)
+                content = button.style().subElementRect(
+                    QStyle.SubElement.SE_PushButtonContents, option, button,
+                )
+                assert content.width() >= button.fontMetrics().horizontalAdvance(button.text())
 
             for control in (
                 window.setup_name_edit,
@@ -98,6 +112,7 @@ def test_proportional_panels_keep_controls_and_checkbox_readable(desktop_applica
                 window.view_schedule_button,
                 window.save_setup_button,
                 window.sync_button,
+                window.extract_button,
                 window.combine_button,
                 window.theme_button,
                 window.clear_activity_button,
