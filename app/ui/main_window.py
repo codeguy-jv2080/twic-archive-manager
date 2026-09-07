@@ -35,7 +35,6 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSpinBox,
-    QSplitter,
     QStackedWidget,
     QTimeEdit,
     QVBoxLayout,
@@ -372,6 +371,7 @@ class TwicArchiveManagerWindow(QMainWindow):
         self._build_ui()
         self._set_theme(self._theme)
         self.reload_setups()
+        self.setMinimumSize(self.minimumSizeHint().expandedTo(self.minimumSize()))
         if theme_error:
             self._show_error(f"Could not load the saved theme: {theme_error}")
 
@@ -400,20 +400,13 @@ class TwicArchiveManagerWindow(QMainWindow):
     def _build_ui(self) -> None:
         central = QWidget(self)
         self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
-
-        splitter = QSplitter(Qt.Orientation.Horizontal, central)
-        splitter.addWidget(self._build_setups_panel())
-        splitter.addWidget(self._build_work_panel())
-        splitter.setSizes([520, 900])
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        layout.addWidget(splitter)
+        layout = QHBoxLayout(central)
+        layout.addWidget(self._build_setups_panel(), 2)
+        layout.addWidget(self._build_work_panel(), 3)
 
     def _build_setups_panel(self) -> QWidget:
         panel = QWidget(self)
-        panel.setMinimumWidth(440)
-        panel.setMaximumWidth(600)
+        panel.setMinimumWidth(540)
         self.setups_panel = panel
         layout = QVBoxLayout(panel)
 
@@ -474,7 +467,7 @@ class TwicArchiveManagerWindow(QMainWindow):
         self.keep_zips_checkbox = QCheckBox("Keep ZIP files after extraction", details_group)
         self.keep_zips_checkbox.setChecked(True)
         self.combine_after_sync_checkbox = QCheckBox(
-            "Automatically create combined PGN after download/extraction", details_group
+            "Automatically create combined PGN\nafter download/extraction", details_group
         )
         options = QWidget(details_group)
         options_layout = QVBoxLayout(options)
