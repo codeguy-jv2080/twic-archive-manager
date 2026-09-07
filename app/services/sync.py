@@ -16,6 +16,7 @@ from .archive import (
     download_file,
     extract_zip,
 )
+from .archive_lock import archive_operation
 from .catalog import TwicIssue, fetch_catalog
 
 
@@ -200,11 +201,31 @@ def sync_profile(
 
     initialize_database()
     profile = _resolve_profile(profile_identifier)
-    profile_name = str(profile["name"])
     archive_root = str(profile.get("archive_root") or "").strip()
     if not archive_root:
         raise ConfigurationError("Saved Setup has no archive location.")
 
+    with archive_operation(archive_root):
+        return _sync_profile(
+            profile,
+            archive_root,
+            selection=selection,
+            catalog_loader=catalog_loader,
+            on_event=on_event,
+            is_cancelled=is_cancelled,
+        )
+
+
+def _sync_profile(
+    profile: dict[str, object],
+    archive_root: str,
+    *,
+    selection: Selection | None,
+    catalog_loader: CatalogLoader,
+    on_event: EventCallback | None,
+    is_cancelled: CancelledCallback | None,
+) -> SyncResult:
+    profile_name = str(profile["name"])
     formats = [
         archive_format
         for archive_format, enabled in (
@@ -221,6 +242,8 @@ def sync_profile(
     result = SyncResult(profile_name=profile_name, selected_issues=tuple(entry.issue_number for entry in selected))
     total = len(selected) * len(formats)
     completed = 0
+    extract_archives = _as_bool(profile.get("extract_archives"))
+    keep_zips = _as_bool(profile.get("keep_zip_files"))
 
     for issue in selected:
         for archive_format in formats:
@@ -250,34 +273,24 @@ def sync_profile(
 
             zip_path = layout.download_path(archive_format, issue.issue_number, source_url)
             extraction_path = layout.extraction_directory(archive_format)
-            extract_archives = _as_bool(profile.get("extract_archives"))
-            already_done = (
-                layout.has_extracted_issue(archive_format, issue.issue_number)
-                if extract_archives
-                else zip_path.exists()
-            )
-
-            if already_done:
-                result.skipped += 1
-                completed += 1
-                _emit(
-                    on_event,
-                    SyncEvent(
-                        "info",
-                        (
-                            f"TWIC {issue.issue_number} {archive_format.upper()} is already extracted."
-                            if extract_archives
-                            else f"TWIC {issue.issue_number} {archive_format.upper()} ZIP already exists."
-                        ),
-                        issue.issue_number,
-                        archive_format,
-                        completed,
-                        total,
-                    ),
-                )
-                continue
-
             try:
+                already_extracted = extract_archives and layout.has_extracted_issue(
+                    archive_format, issue.issue_number
+                )
+                if already_extracted and (not keep_zips or zip_path.exists()):
+                    removed_zip = not keep_zips and zip_path.exists()
+                    if removed_zip:
+                        zip_path.unlink()
+                    result.skipped += 1
+                    message = f"TWIC {issue.issue_number} {archive_format.upper()} is already extracted."
+                    if removed_zip:
+                        message += " Removed ZIP because Keep ZIP files is off."
+                    _emit(
+                        on_event,
+                        SyncEvent("info", message, issue.issue_number, archive_format, completed, total),
+                    )
+                    continue
+
                 if zip_path.exists():
                     result.skipped += 1
                     _emit(
@@ -306,7 +319,7 @@ def sync_profile(
                     download_file(source_url, zip_path, is_cancelled=is_cancelled)
                     result.downloaded += 1
 
-                if extract_archives:
+                if extract_archives and not already_extracted:
                     _emit(
                         on_event,
                         SyncEvent(
@@ -320,7 +333,7 @@ def sync_profile(
                     )
                     extract_zip(zip_path, extraction_path)
                     result.extracted += 1
-                    if not _as_bool(profile.get("keep_zip_files")):
+                    if not keep_zips:
                         zip_path.unlink(missing_ok=True)
             except DownloadCancelled:
                 result.cancelled = True
@@ -378,4 +391,5 @@ def combine_profile(profile_identifier: str | int | dict[str, object]) -> Combin
     archive_root = str(profile.get("archive_root") or "").strip()
     if not archive_root:
         raise ConfigurationError("Saved Setup has no archive location.")
-    return combine_extracted_pgns(ArchiveLayout.create(archive_root))
+    with archive_operation(archive_root):
+        return combine_extracted_pgns(ArchiveLayout.create(archive_root))

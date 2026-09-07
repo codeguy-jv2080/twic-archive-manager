@@ -97,3 +97,38 @@ def test_delete_button_deletes_the_selected_setup() -> None:
     assert window.setup_list.count() == 0
     window.close()
     qt_app.processEvents()
+
+
+def test_operation_failure_is_logged_once(monkeypatch) -> None:
+    qt_app = QApplication.instance() or QApplication([])
+    messages = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: messages.append(args[-1]))
+    window = TwicArchiveManagerWindow()
+
+    window._operation_failed("No extracted PGN files are available to combine.")
+
+    expected = "The operation failed: No extracted PGN files are available to combine."
+    assert window.log_output.toPlainText() == expected
+    assert window.status_label.text() == expected
+    assert messages == [expected]
+    window.close()
+    qt_app.processEvents()
+
+
+def test_schedule_details_stay_in_activity_not_the_status_heading(monkeypatch) -> None:
+    qt_app = QApplication.instance() or QApplication([])
+    messages = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *args: messages.append(args[-1]))
+    setup = SavedSetup(id=1, name="Main", archive_root=r"C:\Archive")
+    details = 'Schedule for "Main": weekly Monday 20:00.\n\nLast Run Time: 9/7/2026\nLast Result: 0'
+    window = TwicArchiveManagerWindow(DesktopCallbacks(
+        load_setups=lambda: [setup], view_schedule=lambda _: {"message": details},
+    ))
+
+    window.view_schedule()
+
+    assert window.status_label.text() == details.splitlines()[0]
+    assert window.log_output.toPlainText() == details
+    assert messages == [details]
+    window.close()
+    qt_app.processEvents()

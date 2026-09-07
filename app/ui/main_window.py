@@ -741,7 +741,7 @@ class TwicArchiveManagerWindow(QMainWindow):
             self._show_error(f"Could not view schedule: {error}")
             return
         message = _result_message(result)
-        self._set_status(message)
+        self._set_status(message.splitlines()[0] if message else "Ready.")
         self._append_log(message)
         QMessageBox.information(self, "Schedule", message)
 
@@ -959,8 +959,6 @@ class TwicArchiveManagerWindow(QMainWindow):
 
     @Slot(str)
     def _operation_failed(self, message: str) -> None:
-        self._set_status(f"Failed: {message}")
-        self._append_log(f"Failed: {message}")
         self._show_error(f"The operation failed: {message}")
 
     @Slot()

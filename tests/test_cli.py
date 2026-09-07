@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app import cli
+from app.services.archive_lock import ArchiveBusy
 from app.services.sync import ConfigurationError, SyncResult
 
 
@@ -35,3 +36,15 @@ def test_unknown_or_invalid_profile_returns_code_two(monkeypatch) -> None:
     monkeypatch.setattr(cli, "sync_profile", fail)
 
     assert cli.main(["sync", "--profile", "Missing"]) == cli.EXIT_INVALID_CONFIGURATION
+
+
+def test_busy_archive_returns_failure_for_sync_and_combine(monkeypatch, capsys) -> None:
+    def busy(_: str):
+        raise ArchiveBusy("Another operation is already using archive folder: test")
+
+    monkeypatch.setattr(cli, "sync_profile", busy)
+    monkeypatch.setattr(cli, "combine_profile", busy)
+
+    for command in ("sync", "combine"):
+        assert cli.main([command, "--profile", "Main"]) == cli.EXIT_FAILED
+        assert "Another operation is already using" in capsys.readouterr().err

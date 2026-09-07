@@ -122,6 +122,19 @@ def test_inspect_and_remove_missing_task_do_not_raise() -> None:
     assert remove_task("Main", runner=runner) is False
 
 
+def test_inspect_requests_last_run_time_and_result() -> None:
+    details = "Last Run Time: 9/7/2026 8:00:00 PM\nLast Result: 0\nNext Run Time: 9/14/2026 8:00:00 PM"
+    runner = FakeRunner(completed(stdout=details))
+
+    info = inspect_task("Main", runner=runner)
+
+    assert info.exists
+    assert info.details == details
+    assert runner.commands == [
+        ["schtasks.exe", "/Query", "/TN", "TWIC Archive Manager - Main", "/V", "/FO", "LIST"]
+    ]
+
+
 def test_empty_schedule_removes_task() -> None:
     runner = FakeRunner(completed(stdout="SUCCESS: The scheduled task was deleted."))
 

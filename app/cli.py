@@ -8,6 +8,7 @@ import sys
 from typing import Sequence
 
 from .services.archive import ArchiveRootUnavailable, NoExtractedPgns
+from .services.archive_lock import ArchiveBusy
 from .services.catalog import CatalogError
 from .services.sync import (
     ConfigurationError,
@@ -85,7 +86,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except SyncCancelled:
         print("Canceled.", file=sys.stderr)
         return EXIT_CANCELED
-    except (CatalogError, OSError) as error:
+    except (ArchiveBusy, CatalogError, OSError) as error:
         print(f"Sync failed: {error}", file=sys.stderr)
         return EXIT_FAILED
     return EXIT_INVALID_CONFIGURATION

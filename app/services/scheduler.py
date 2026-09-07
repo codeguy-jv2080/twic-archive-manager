@@ -165,7 +165,7 @@ def inspect_task(
 
     name = _validate_profile_name(profile_name)
     task_name = task_name_for_profile(name)
-    command = ["schtasks.exe", "/Query", "/TN", task_name, "/FO", "LIST"]
+    command = ["schtasks.exe", "/Query", "/TN", task_name, "/V", "/FO", "LIST"]
     result = _invoke(command, runner=runner)
     if result.returncode == 0:
         return ScheduledTaskInfo(

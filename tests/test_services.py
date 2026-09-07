@@ -113,3 +113,65 @@ def test_sync_uses_extracted_files_as_its_source_of_truth(tmp_path: Path, monkey
     assert second_result.skipped == 1
     assert second_result.downloaded == 0
     assert second_result.extracted == 0
+
+
+@pytest.mark.parametrize("archive_format", ["pgn", "cbv"])
+@pytest.mark.parametrize("keep_zips,zip_present", [(False, True), (False, False), (True, True), (True, False)])
+def test_keep_zip_setting_applies_to_already_extracted_issues(
+    tmp_path: Path, monkeypatch, archive_format: str, keep_zips: bool, zip_present: bool
+) -> None:
+    monkeypatch.setattr("app.database.database_path", lambda: tmp_path / "state.db")
+    root = tmp_path / "archive"
+    layout = ArchiveLayout.create(root)
+    filename = f"twic999.{archive_format}"
+    source_zip = tmp_path / f"twic999{archive_format}.zip"
+    with zipfile.ZipFile(source_zip, "w") as archive:
+        archive.writestr(filename, "source content")
+    extracted = layout.extraction_directory(archive_format) / filename
+    extracted.write_text("existing extracted content", encoding="utf-8")
+    zip_path = layout.download_path(archive_format, 999, source_zip.as_uri())
+    if zip_present:
+        zip_path.write_bytes(source_zip.read_bytes())
+    issue = TwicIssue(999, None, source_zip.as_uri(), source_zip.as_uri(), None)
+    events = []
+
+    result = sync_profile(
+        {
+            "name": "Main", "archive_root": str(root),
+            "download_pgn": archive_format == "pgn", "download_cbv": archive_format == "cbv",
+            "extract_archives": True, "keep_zip_files": keep_zips,
+        },
+        catalog_loader=lambda: [issue], on_event=events.append,
+    )
+
+    assert result.succeeded
+    assert result.downloaded == int(keep_zips and not zip_present)
+    assert result.skipped == int(not keep_zips or zip_present)
+    assert result.extracted == 0
+    assert extracted.read_text(encoding="utf-8") == "existing extracted content"
+    assert zip_path.exists() == keep_zips
+    assert events[-1].completed == events[-1].total == 1
+    if not keep_zips and zip_present:
+        assert "Removed ZIP" in events[0].message
+
+
+def test_download_only_keeps_zip_even_when_keep_after_extraction_is_off(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("app.database.database_path", lambda: tmp_path / "state.db")
+    source_zip = tmp_path / "twic999g.zip"
+    with zipfile.ZipFile(source_zip, "w") as archive:
+        archive.writestr("twic999.pgn", "test")
+    root = tmp_path / "archive"
+    profile = {
+        "name": "Main", "archive_root": str(root), "download_pgn": True,
+        "extract_archives": False, "keep_zip_files": False,
+    }
+    issue = TwicIssue(999, None, source_zip.as_uri(), None, None)
+
+    first = sync_profile(profile, catalog_loader=lambda: [issue])
+    second = sync_profile(profile, catalog_loader=lambda: [issue])
+
+    assert first.succeeded and second.succeeded
+    assert first.downloaded == 1 and second.downloaded == 0
+    assert second.skipped == 1
+    assert first.extracted == second.extracted == 0
+    assert (root / "Downloads" / "PGN" / source_zip.name).is_file()
