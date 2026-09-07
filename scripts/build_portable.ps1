@@ -3,6 +3,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'assert_app_closed.ps1')
+Assert-TwicAppClosed
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $pythonPath = (Resolve-Path $Python).Path
@@ -13,10 +15,15 @@ $stagedFolder = Join-Path $deploymentRoot "twic_archive_manager.dist"
 $portableFolder = Join-Path $distRoot "TWIC Archive Manager"
 $generatedExecutable = Join-Path $stagedFolder "TWIC Archive Manager.exe"
 
+foreach ($target in @($deploymentRoot, $stagedFolder, $portableFolder)) {
+    Assert-TwicBuildTarget -ProjectRoot $projectRoot -Target $target
+}
+
 if (-not (Test-Path -LiteralPath $iconPath)) {
     throw "PySide6 deployment icon not found: $iconPath"
 }
 
+$oldCacheDirectory = $env:NUITKA_CACHE_DIR
 Push-Location $projectRoot
 try {
     New-Item -ItemType Directory -Force -Path $distRoot | Out-Null
@@ -24,7 +31,6 @@ try {
         Remove-Item -LiteralPath $deploymentRoot -Recurse -Force
     }
 
-    $oldCacheDirectory = $env:NUITKA_CACHE_DIR
     $env:NUITKA_CACHE_DIR = Join-Path $projectRoot "build\nuitka-cache"
     $outputDirectoryOption = "--output-dir=$deploymentRoot"
     $outputNameOption = "--output-filename=TWIC Archive Manager.exe"
@@ -49,6 +55,7 @@ try {
         throw "Qt deployment did not produce $generatedExecutable"
     }
 
+    Assert-TwicAppClosed
     if (Test-Path -LiteralPath $portableFolder) {
         Remove-Item -LiteralPath $portableFolder -Recurse -Force
     }

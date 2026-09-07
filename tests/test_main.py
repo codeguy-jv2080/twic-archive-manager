@@ -84,3 +84,11 @@ def test_scheduler_uses_the_packaged_executable_for_nuitka(monkeypatch) -> None:
     monkeypatch.setattr(main.sys, "executable", r"C:\portable\python.exe")
 
     assert main._scheduler_executable() == r"C:\portable\TWIC Archive Manager.exe"
+
+
+def test_theme_choice_is_remembered_across_callback_instances(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("app.database.database_path", lambda: tmp_path / "test.db")
+    callbacks = main.create_desktop_callbacks()
+    assert callbacks.load_theme() == "dark"
+    callbacks.save_theme("light")
+    assert main.create_desktop_callbacks().load_theme() == "light"

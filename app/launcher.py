@@ -5,8 +5,15 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
+from .install_support import application_running
+
 
 def main(argv: Sequence[str] | None = None) -> int:
+    with application_running():
+        return _launch(argv)
+
+
+def _launch(argv: Sequence[str] | None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments:
         from .cli import main as cli_main

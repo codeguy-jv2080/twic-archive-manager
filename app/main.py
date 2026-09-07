@@ -9,9 +9,11 @@ from .database import (
     create_profile,
     delete_profile,
     get_profile,
+    get_app_setting,
     initialize_database,
     list_profiles,
     update_profile,
+    set_app_setting,
 )
 from .services.scheduler import inspect_task, remove_task, set_schedule
 from .services.sync import (
@@ -98,6 +100,16 @@ def _scheduler_executable() -> str | tuple[str, ...]:
 
 def create_desktop_callbacks() -> DesktopCallbacks:
     """Create the small set of application actions used by the Qt window."""
+
+    def load_theme() -> str:
+        initialize_database()
+        return get_app_setting("theme", "dark")
+
+    def save_theme(theme: str) -> None:
+        if theme not in {"light", "dark"}:
+            raise ValueError("Choose light or dark mode.")
+        initialize_database()
+        set_app_setting("theme", theme)
 
     def load_setups() -> list[dict[str, object]]:
         initialize_database()
@@ -249,6 +261,8 @@ def create_desktop_callbacks() -> DesktopCallbacks:
         combine=combine,
         apply_schedule=apply_schedule,
         view_schedule=view_schedule,
+        load_theme=load_theme,
+        save_theme=save_theme,
     )
 
 

@@ -1,5 +1,7 @@
 # TWIC Archive Manager
 
+This is the advanced/reference guide. New users: start with the separate [Beginner Guide](BEGINNER_GUIDE.md), including installer download and first-run instructions. Published setup files are listed under [GitHub Releases](https://github.com/codeguy-jv2080/twic-archive-manager/releases).
+
 A standalone Windows desktop app for downloading and extracting The Week in Chess (TWIC) archives. Save different archive locations and issue selections, sync them manually or on a schedule, and optionally combine extracted PGNs into one file.
 
 The interface uses Python and PySide6 (Qt). It does not require a browser, FastAPI server, or localhost connection. The packaged app includes its Python runtime, so a separate Python installation is not needed to use it. Internet access is needed to fetch the TWIC issue list and downloads; settings and archive files stay on your computer or your chosen network drive.
@@ -15,6 +17,8 @@ The interface uses Python and PySide6 (Qt). It does not require a browser, FastA
 - Optional daily, weekly, or monthly Windows Task Scheduler runs. Scheduling is off by default.
 - Visible Activity messages, progress, errors, cancellation during sync, and a Clear Activity button.
 - Prevent simultaneous sync/combine operations from writing to the same archive folder on the same Windows computer.
+- Light / Dark button with a remembered preference; the existing dark theme remains the default.
+- Optional per-user Windows installer, alongside the unchanged portable launch method.
 
 ## Launch the app
 
@@ -25,6 +29,14 @@ dist\TWIC Archive Manager\TWIC Archive Manager.exe
 ```
 
 Keep the executable together with the other files and folders inside `TWIC Archive Manager`. The portable build runs without an installer; the executable is not a single-file distribution. Build output is not committed to the repository.
+
+### Optional installed version
+
+`dist\TWIC-Archive-Manager-Setup.exe` packages the same portable build. It installs for the current Windows user under `%LOCALAPPDATA%\Programs\TWIC Archive Manager`, adds a Start menu shortcut, and offers an optional desktop shortcut. It does not require administrator privileges or install Python separately.
+
+The installer does not move, delete, or replace the portable folder. Both launch methods share Saved Setups and the theme preference for the same Windows account. Apply a setup's schedule from whichever copy you want its task to launch; there is one Windows task per setup, not a separate task for each copy.
+
+Upgrades reuse the installed location. Uninstall removes only installed program files and TWIC tasks whose executable path points to that installation; it preserves the SQLite settings database, archives, and portable copy. The installer asks for running app processes to be closed and does not force-close or restart them.
 
 ## Create a Saved Setup and sync
 
@@ -124,7 +136,7 @@ If you move the portable application folder, open it from the new location and c
 
 ## Saved settings
 
-Saved Setups, their options, and their applied schedule settings are stored in SQLite at:
+Saved Setups, their options, their applied schedule settings, and the Light / Dark preference are stored in SQLite at:
 
 ```text
 %LOCALAPPDATA%\TWIC Archive Manager\state\twic-archive-manager.db
@@ -157,6 +169,18 @@ Close the app before rebuilding its existing portable distribution:
 ```powershell
 .\scripts\build_portable.ps1
 ```
+
+To build the installer, install [Inno Setup 6](https://jrsoftware.org/isdl.php) on the build machine, then run:
+
+```powershell
+.\scripts\build_installer.ps1
+```
+
+This rebuilds the canonical portable app and packages it as `dist\TWIC-Archive-Manager-Setup.exe`. Use `-SkipPortableBuild` to package an already-current portable build, or `-Compiler "C:\path\to\ISCC.exe"` for a nonstandard compiler location. The installer version comes from `pyproject.toml`. No GitHub workflow changes are required.
+
+Publishing is separate from building: attach `TWIC-Archive-Manager-Setup.exe` to a GitHub Release so the beginner guide's download instructions have an installer asset to point to. No installer is uploaded by either build script.
+
+The current installer is unsigned. The automated checks cover application behavior and installer configuration; the install/upgrade/uninstall lifecycle still needs an end-to-end check in a Windows test environment before public distribution.
 
 For background/terminal use, the app also supports `sync --profile "Setup name"` and `combine --profile "Setup name"`. For example, from the repository folder:
 

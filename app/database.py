@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS profiles (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 # The starter database predates these Saved Setup fields. These additions keep
@@ -78,6 +83,21 @@ def initialize_database(path: Path | str | None = None) -> None:
             if column not in existing_columns:
                 conn.execute(f"ALTER TABLE profiles ADD COLUMN {column} {definition}")
         conn.execute("DROP TABLE IF EXISTS artifacts")
+
+
+def get_app_setting(key: str, default: str = "", path: Path | str | None = None) -> str:
+    with connection(path) as conn:
+        row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+    return str(row["value"]) if row is not None else default
+
+
+def set_app_setting(key: str, value: str, path: Path | str | None = None) -> None:
+    with connection(path) as conn:
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
 
 
 def _profile_from_row(row: sqlite3.Row) -> dict[str, object]:

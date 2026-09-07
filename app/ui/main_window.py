@@ -92,7 +92,22 @@ QPushButton[runAction="true"]:disabled {
 """
 
 
-def _apply_charcoal_theme(application: QApplication) -> None:
+def _button_style(theme: str) -> str:
+    if theme != "light":
+        return BUTTON_STYLE
+    style = BUTTON_STYLE
+    for dark, light in {
+        "#34373b": "#c3c5c7", "#f4f4f4": "#202225", "#707378": "#85888c",
+        "#121416": "#909398", "#45494e": "#d3d5d7", "#969a9f": "#6c7074",
+        "#25282b": "#b7babd", "#5d6165": "#777b7f", "#25272a": "#c6c8ca",
+        "#3e4145": "#a4a7aa", "#17191b": "#b1b4b7", "#72767a": "#666a6e",
+        "#ffffff": "#202225", "#8a8e92": "#7b7f83",
+    }.items():
+        style = style.replace(dark, light)
+    return style
+
+
+def _apply_theme(application: QApplication, theme: str) -> None:
     application.setStyle("Fusion")
     palette = QPalette()
     palette.setColor(QPalette.ColorRole.Window, QColor("#000000"))
@@ -111,6 +126,22 @@ def _apply_charcoal_theme(application: QApplication) -> None:
     palette.setColor(
         QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#72767a")
     )
+    if theme == "light":
+        for role, color in {
+            QPalette.ColorRole.Window: "#d1d1d1",
+            QPalette.ColorRole.WindowText: "#202225",
+            QPalette.ColorRole.Base: "#e0e0e0",
+            QPalette.ColorRole.AlternateBase: "#d6d8da",
+            QPalette.ColorRole.ToolTipBase: "#e0e0e0",
+            QPalette.ColorRole.ToolTipText: "#202225",
+            QPalette.ColorRole.Text: "#202225",
+            QPalette.ColorRole.Button: "#c3c5c7",
+            QPalette.ColorRole.ButtonText: "#202225",
+            QPalette.ColorRole.PlaceholderText: "#666a6e",
+        }.items():
+            palette.setColor(role, QColor(color))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor("#666a6e"))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#666a6e"))
     application.setPalette(palette)
 
 
@@ -262,6 +293,8 @@ class DesktopCallbacks:
     combine: CombinePgns = _service_not_connected
     apply_schedule: ApplySchedule = _service_not_connected
     view_schedule: ViewSchedule = _service_not_connected
+    load_theme: Callable[[], str] = lambda: "dark"
+    save_theme: Callable[[str], None] = _service_not_connected
 
 
 class _OperationWorker(QObject):
@@ -320,11 +353,14 @@ class TwicArchiveManagerWindow(QMainWindow):
     """Normal Windows application window for manual TWIC archive management."""
 
     def __init__(self, callbacks: DesktopCallbacks | None = None) -> None:
-        application = QApplication.instance()
-        if application is not None:
-            _apply_charcoal_theme(application)
         super().__init__()
         self._callbacks = callbacks or DesktopCallbacks()
+        theme_error = None
+        try:
+            theme = self._callbacks.load_theme()
+        except Exception as error:
+            theme, theme_error = "dark", str(error)
+        self._theme = theme if theme in {"light", "dark"} else "dark"
         self._setups: list[SavedSetup] = []
         self._operation_thread: QThread | None = None
         self._operation_worker: _OperationWorker | None = None
@@ -333,9 +369,33 @@ class TwicArchiveManagerWindow(QMainWindow):
         self.setWindowTitle("TWIC Archive Manager")
         self.resize(1180, 760)
         self.setMinimumSize(900, 620)
-        self.setStyleSheet(BUTTON_STYLE)
         self._build_ui()
+        self._set_theme(self._theme)
         self.reload_setups()
+        if theme_error:
+            self._show_error(f"Could not load the saved theme: {theme_error}")
+
+    def _set_theme(self, theme: str) -> None:
+        self._theme = theme
+        application = QApplication.instance()
+        if application is not None:
+            _apply_theme(application, theme)
+        self.setStyleSheet(_button_style(theme))
+        if application is not None:
+            self.setPalette(application.palette())
+        other = "light" if theme == "dark" else "dark"
+        self.theme_button.setToolTip(f"Current theme: {theme.title()}. Switch to {other} mode.")
+        self.theme_button.setAccessibleName(f"Switch to {other} mode")
+
+    @Slot()
+    def toggle_theme(self) -> None:
+        theme = "light" if self._theme == "dark" else "dark"
+        try:
+            self._callbacks.save_theme(theme)
+        except Exception as error:
+            self._show_error(f"Could not save the theme: {error}")
+            return
+        self._set_theme(theme)
 
     def _build_ui(self) -> None:
         central = QWidget(self)
@@ -594,6 +654,10 @@ class TwicArchiveManagerWindow(QMainWindow):
         layout.addWidget(self.sync_button, 0, 0)
         layout.addWidget(self.combine_button, 0, 1)
         layout.setColumnStretch(2, 1)
+        self.theme_button = QPushButton("Light / Dark", group)
+        self.theme_button.setFixedWidth(120)
+        self.theme_button.clicked.connect(self.toggle_theme)
+        layout.addWidget(self.theme_button, 0, 3)
         return group
 
     def _build_activity_group(self) -> QGroupBox:
@@ -1064,7 +1128,6 @@ def run_desktop(callbacks: DesktopCallbacks | None = None) -> int:
     """Run the desktop application and return the Qt process exit code."""
 
     qt_app = QApplication.instance() or QApplication([])
-    _apply_charcoal_theme(qt_app)
     qt_app.setFont(QFont("Segoe UI", 12))
     window = TwicArchiveManagerWindow(callbacks)
     window.show()

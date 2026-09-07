@@ -29,6 +29,60 @@ def test_commands_are_clearly_labeled_buttons() -> None:
     qt_app.processEvents()
 
 
+def test_theme_toggle_changes_colors_without_changing_content_or_fonts() -> None:
+    qt_app = QApplication.instance() or QApplication([])
+    saved = []
+    window = TwicArchiveManagerWindow(DesktopCallbacks(save_theme=saved.append))
+    window.setup_name_edit.setText("Unsaved draft")
+    window.log_output.setPlainText("Existing activity")
+    original_font = window.setup_list.font()
+    assert window.theme_button.text() == "Light / Dark"
+
+    window.theme_button.click()
+
+    assert saved == ["light"]
+    assert window.palette().color(window.palette().ColorRole.Window).name() == "#d1d1d1"
+    assert window.palette().color(window.palette().ColorRole.Text).name() == "#202225"
+    assert window.palette().color(window.palette().ColorRole.Highlight).name() == "#c6a300"
+    assert window.palette().color(window.palette().ColorRole.HighlightedText).name() == "#ffffff"
+    assert "color: #202225" in window.styleSheet()
+    assert window.setup_list.font() == original_font
+    assert window.setup_name_edit.text() == "Unsaved draft"
+    assert window.log_output.toPlainText() == "Existing activity"
+
+    window.theme_button.click()
+    assert saved == ["light", "dark"]
+    assert window.palette().color(window.palette().ColorRole.Window).name() == "#000000"
+    assert "color: #f4f4f4" in window.styleSheet()
+    window.close()
+    qt_app.processEvents()
+
+
+def test_theme_loaded_when_window_opens_and_invalid_preference_falls_back_to_dark() -> None:
+    qt_app = QApplication.instance() or QApplication([])
+    for stored, expected in [("light", "#d1d1d1"), ("invalid", "#000000")]:
+        window = TwicArchiveManagerWindow(DesktopCallbacks(load_theme=lambda: stored))
+        assert window.palette().color(window.palette().ColorRole.Window).name() == expected
+        window.close()
+    qt_app.processEvents()
+
+
+def test_failed_theme_save_does_not_switch_modes(monkeypatch) -> None:
+    qt_app = QApplication.instance() or QApplication([])
+    messages = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: messages.append(args[-1]))
+
+    def fail(_: str):
+        raise OSError("Cannot write settings")
+
+    window = TwicArchiveManagerWindow(DesktopCallbacks(save_theme=fail))
+    window.theme_button.click()
+    assert window.palette().color(window.palette().ColorRole.Window).name() == "#000000"
+    assert messages == ["Could not save the theme: Cannot write settings"]
+    window.close()
+    qt_app.processEvents()
+
+
 def test_changing_a_selected_setup_name_creates_a_new_setup() -> None:
     qt_app = QApplication.instance() or QApplication([])
     original = SavedSetup(id=1, name="Original", archive_root=r"C:\Archive\One")

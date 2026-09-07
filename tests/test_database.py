@@ -6,13 +6,15 @@ from app.database import (
     create_profile,
     delete_profile,
     get_profile,
+    get_app_setting,
     initialize_database,
     list_profiles,
     update_profile,
+    set_app_setting,
 )
 
 
-def test_initialization_creates_only_the_saved_setup_table(tmp_path: Path) -> None:
+def test_initialization_creates_setups_and_preferences_without_issue_tracking(tmp_path: Path) -> None:
     database = tmp_path / "state" / "test.db"
     initialize_database(database)
 
@@ -25,6 +27,7 @@ def test_initialization_creates_only_the_saved_setup_table(tmp_path: Path) -> No
         }
 
     assert "profiles" in tables
+    assert "app_settings" in tables
     assert "artifacts" not in tables
 
 
@@ -41,6 +44,19 @@ def test_saved_setup_defaults_and_lookup(tmp_path: Path) -> None:
     assert profile["schedule_text"] == ""
     assert get_profile("main", database) == get_profile(profile["id"], database)
     assert list_profiles(database) == [profile]
+
+
+def test_theme_preference_survives_reinitialization_without_changing_setups(tmp_path: Path) -> None:
+    database = tmp_path / "test.db"
+    initialize_database(database)
+    setup = create_profile(name="Existing", archive_root=r"C:\Chess\TWIC", path=database)
+    assert get_app_setting("theme", "dark", database) == "dark"
+    set_app_setting("theme", "light", database)
+    initialize_database(database)
+    assert get_app_setting("theme", "dark", database) == "light"
+    assert get_profile("Existing", database) == setup
+    set_app_setting("theme", "dark", database)
+    assert get_app_setting("theme", path=database) == "dark"
 
 
 def test_saved_setup_can_be_updated_and_deleted(tmp_path: Path) -> None:
