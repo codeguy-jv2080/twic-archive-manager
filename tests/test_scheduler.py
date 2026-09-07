@@ -4,6 +4,7 @@ import subprocess
 
 import pytest
 
+from app.services import scheduler
 from app.services.scheduler import (
     InvalidSchedule,
     SchedulerError,
@@ -144,6 +145,20 @@ def test_empty_schedule_removes_task() -> None:
     assert runner.commands == [
         ["schtasks.exe", "/Delete", "/F", "/TN", "TWIC Archive Manager - Main"]
     ]
+
+
+def test_installed_schedules_never_target_portable_tasks(monkeypatch) -> None:
+    monkeypatch.setattr(scheduler, "is_installed", lambda: True)
+    expected = "TWIC Archive Manager (Installed) - Main"
+    assert task_name_for_profile("Main") == expected
+    command = build_create_command("Main", "daily 09:00")
+    assert command[command.index("/TN") + 1] == expected
+    runner = FakeRunner(completed(), completed(), completed())
+    inspect_task("Main", runner=runner)
+    remove_task("Main", runner=runner)
+    set_schedule("Main", "", runner=runner)
+    for command in runner.commands:
+        assert command[command.index("/TN") + 1] == expected
 
 
 def test_scheduler_error_includes_schtasks_output() -> None:

@@ -7,8 +7,10 @@ from dataclasses import dataclass
 import re
 import subprocess
 
+from ..settings import is_installed
 
 TASK_PREFIX = "TWIC Archive Manager - "
+INSTALLED_TASK_PREFIX = "TWIC Archive Manager (Installed) - "
 WEEKDAYS = {
     "monday": ("Monday", "MON"),
     "tuesday": ("Tuesday", "TUE"),
@@ -92,7 +94,8 @@ def task_name_for_profile(profile_name: str) -> str:
     """Return the stable Windows task name for one Saved Setup."""
 
     name = _validate_profile_name(profile_name)
-    return f"{TASK_PREFIX}{name}"
+    prefix = INSTALLED_TASK_PREFIX if is_installed() else TASK_PREFIX
+    return f"{prefix}{name}"
 
 
 def build_sync_command(

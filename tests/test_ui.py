@@ -29,6 +29,36 @@ def test_commands_are_clearly_labeled_buttons() -> None:
     qt_app.processEvents()
 
 
+def test_fresh_installed_window_does_not_load_portable_choices(tmp_path, monkeypatch):
+    from app import settings
+    from app.database import create_profile, initialize_database, set_app_setting
+    from app.main import create_desktop_callbacks
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "appdata"))
+    monkeypatch.setattr(settings.sys, "argv", [str(tmp_path / "portable" / "app.exe")])
+    initialize_database()
+    create_profile(name="Portable fixture", archive_root=str(tmp_path / "archive"),
+                   combine_after_sync=True, schedule_text="weekly Tuesday 20:00")
+    set_app_setting("theme", "light")
+    portable_db = settings.database_path()
+    original = portable_db.read_bytes()
+
+    installed = tmp_path / "installed"
+    installed.mkdir()
+    (installed / settings.INSTALLATION_MARKER).write_text("installed\n")
+    monkeypatch.setattr(settings.sys, "argv", [str(installed / "app.exe")])
+    qt_app = QApplication.instance() or QApplication([])
+    window = TwicArchiveManagerWindow(create_desktop_callbacks())
+    try:
+        assert window.setup_list.count() == 0
+        assert not window.combine_after_sync_checkbox.isChecked()
+        assert window.palette().color(window.palette().ColorRole.Window).name() == "#000000"
+        assert portable_db.read_bytes() == original
+    finally:
+        window.close()
+        qt_app.processEvents()
+
+
 def test_theme_toggle_changes_colors_without_changing_content_or_fonts() -> None:
     qt_app = QApplication.instance() or QApplication([])
     saved = []

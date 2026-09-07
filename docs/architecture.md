@@ -16,6 +16,11 @@ SQLite holds Saved Setups and schedules in the current user's local
 application-data folder. The actual ZIPs and extracted files are the source of
 truth for completed downloads and extractions.
 
+Portable runs retain the existing `state` database. The installer adds a
+non-personal `twic-installed.flag` beside its executable; installed runs use a
+separate `installed-state` database. No setups or preferences are copied between
+them. Installed and portable Windows task names are separate as well.
+
 The window and the CLI call the same services. Starting the program with no
 arguments opens the desktop window. Starting it with `sync` or `combine` stays
 headless for Windows Task Scheduler.

@@ -36,6 +36,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 
 [Files]
 Source: "{#ProjectRoot}\dist\TWIC Archive Manager\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#ProjectRoot}\installer\twic-installed.flag"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"
@@ -52,7 +53,7 @@ var
   TaskPath: String;
 begin
   Result := False;
-  if Pos('TWIC Archive Manager - ', String(Task.Name)) <> 1 then
+  if Pos('TWIC Archive Manager (Installed) - ', String(Task.Name)) <> 1 then
     Exit;
   Actions := Task.Definition.Actions;
   for I := 1 to Actions.Count do

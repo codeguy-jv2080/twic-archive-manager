@@ -20,6 +20,10 @@ dev = [
 [project.scripts]
 twic-archive-manager = "app.launcher:main"
 
+[tool.setuptools.packages.find]
+include = ["app", "app.*"]
+namespaces = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

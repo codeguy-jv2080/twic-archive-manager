@@ -22,7 +22,7 @@ The current setup file is not digitally signed. Only use an installer obtained f
 
 You do not have to install anything. Keep opening **TWIC Archive Manager.exe** from your existing portable folder. Keep the other files in that folder with it.
 
-The installer is an alternative, not a replacement for the portable app. Installing it does not move or delete your portable folder. On the same Windows account, both use your existing Saved Setups and theme preference.
+The installer is an alternative, not a replacement for the portable app. Installing it does not move or delete your portable folder. The installed app starts with its own empty Saved Setups and default theme; it does not import your portable settings. Your existing portable setups and preferences remain available in the portable app.
 
 ## 2. Choose light or dark mode
 
@@ -103,7 +103,7 @@ Select the setup and click **View Windows Task**. Check its **Last Run Time**, *
 
 Activity only shows the current open app session. It does not load a history of background scheduled runs when you open the app.
 
-If you switch from portable to installed use, open the installed app and click **Apply Schedule** for each setup you want it to run. This updates that setup's existing task to use the installed executable. The same applies when switching back to portable use or moving the portable folder.
+The installed and portable apps have separate setups and schedules. Create and schedule a setup in the version you want to use. An installed schedule does not replace a portable schedule with the same name. If you move the portable folder, use **Apply Schedule** in the portable app to update its executable location.
 
 ## Everyday controls
 

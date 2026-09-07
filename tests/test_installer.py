@@ -43,3 +43,5 @@ def test_installer_preserves_user_data_and_does_not_force_close_apps() -> None:
     assert "postinstall skipifsilent unchecked" in script
     assert "CompareText(TaskPath, ExpandConstant('{app}\\{#AppExe}')) = 0" in script
     assert "if TargetsThisInstallation(Task) then" in script
+    assert "TWIC Archive Manager (Installed) - " in script
+    assert 'Source: "{#ProjectRoot}\\installer\\twic-installed.flag"' in script

@@ -29,6 +29,11 @@ $portableExe = Join-Path $projectRoot 'dist\TWIC Archive Manager\TWIC Archive Ma
 if (-not (Test-Path -LiteralPath $portableExe)) {
     throw "Build the portable app first: $portableExe"
 }
+$unexpectedFiles = @(Get-ChildItem -LiteralPath (Split-Path $portableExe) -Recurse -File -Force |
+    Where-Object { $_.Extension -notin @('.exe', '.dll', '.pyd') })
+if ($unexpectedFiles.Count -gt 0) {
+    throw 'The portable build contains unexpected non-program files. Installer packaging stopped; no user data or settings may be included.'
+}
 
 $projectText = Get-Content -LiteralPath (Join-Path $projectRoot 'pyproject.toml') -Raw
 $versionMatch = [regex]::Match($projectText, '(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"')

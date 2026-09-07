@@ -18,6 +18,11 @@ with automatic scheduling off.
 If you move the portable application folder, click Apply Schedule again so
 Windows Task Scheduler uses the new executable location.
 
+Portable tasks use `TWIC Archive Manager - <name>`. Installed tasks use
+`TWIC Archive Manager (Installed) - <name>`. Their settings and task names are
+separate, so creating or deleting an installed schedule does not change a
+portable schedule with the same setup name.
+
 The headless commands are:
 
 ```text

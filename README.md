@@ -34,9 +34,9 @@ Keep the executable together with the other files and folders inside `TWIC Archi
 
 `dist\TWIC-Archive-Manager-Setup.exe` packages the same portable build. It installs for the current Windows user under `%LOCALAPPDATA%\Programs\TWIC Archive Manager`, adds a Start menu shortcut, and offers an optional desktop shortcut. It does not require administrator privileges or install Python separately.
 
-The installer does not move, delete, or replace the portable folder. Both launch methods share Saved Setups and the theme preference for the same Windows account. Apply a setup's schedule from whichever copy you want its task to launch; there is one Windows task per setup, not a separate task for each copy.
+The installer does not move, delete, or replace the portable folder. The installed app has a separate settings database and starts with no Saved Setups; it does not import the portable app's data or theme choice. Each version manages its own schedules, including when setup names are identical.
 
-Upgrades reuse the installed location. Uninstall removes only installed program files and TWIC tasks whose executable path points to that installation; it preserves the SQLite settings database, archives, and portable copy. The installer asks for running app processes to be closed and does not force-close or restart them.
+Upgrades reuse the installed location and preserve that installed app's own settings. Uninstall removes only installed program files and installed-version TWIC tasks whose executable path points to that installation; it preserves both settings databases, archives, and the portable copy. The installer asks for running app processes to be closed and does not force-close or restart them.
 
 ## Create a Saved Setup and sync
 
@@ -136,15 +136,16 @@ If you move the portable application folder, open it from the new location and c
 
 ## Saved settings
 
-Saved Setups, their options, their applied schedule settings, and the Light / Dark preference are stored in SQLite at:
+Saved Setups, their options, their applied schedule settings, and the Light / Dark preference are stored separately in SQLite:
 
 ```text
-%LOCALAPPDATA%\TWIC Archive Manager\state\twic-archive-manager.db
+Portable:  %LOCALAPPDATA%\TWIC Archive Manager\state\twic-archive-manager.db
+Installed: %LOCALAPPDATA%\TWIC Archive Manager\installed-state\twic-archive-manager.db
 ```
 
 Windows Task Scheduler stores the actual scheduled tasks separately. There is no per-issue download-tracking database or persistent last-downloaded marker.
 
-The database stays in your Windows user profile, not in the portable application folder or a network archive folder. Moving the application folder alone does not transfer Saved Setups to another computer.
+The databases stay in your Windows user profile, not in an application folder or network archive folder. Moving an application folder alone does not transfer Saved Setups to another computer. The installer adds `twic-installed.flag` beside its executable to select installed storage; it contains no settings or personal data. The portable build does not contain this marker. Existing portable data is neither copied nor modified when installed storage is initialized.
 
 ## Development
 
@@ -180,7 +181,7 @@ This rebuilds the canonical portable app and packages it as `dist\TWIC-Archive-M
 
 Publishing is separate from building: attach `TWIC-Archive-Manager-Setup.exe` to a GitHub Release so the beginner guide's download instructions have an installer asset to point to. No installer is uploaded by either build script.
 
-The current installer is unsigned. The automated checks cover application behavior and installer configuration; the install/upgrade/uninstall lifecycle still needs an end-to-end check in a Windows test environment before public distribution.
+The current installer is unsigned. Background install, upgrade, uninstall, clean-settings, and data-preservation checks were completed on Windows 11; see the [verification report](docs/installer-verification.md) for actual results and limitations. A pristine Windows VM/new Windows account and interactive installer screens were not tested.
 
 For background/terminal use, the app also supports `sync --profile "Setup name"` and `combine --profile "Setup name"`. For example, from the repository folder:
 
