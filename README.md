@@ -6,6 +6,12 @@ A standalone Windows desktop app for downloading and extracting The Week in Ches
 
 The interface uses Python and PySide6 (Qt). It does not require a browser, FastAPI server, or localhost connection. The packaged app includes its Python runtime, so a separate Python installation is not needed to use it. Internet access is needed for downloads and, when required by your selection, to identify the newest TWIC issue; settings and archive files stay on your computer or your chosen network drive.
 
+## Known release limitations (0.1.1)
+
+- **Unsigned installer and portable app:** both `TWIC-Archive-Manager-Setup.exe` and the portable `TWIC Archive Manager.exe` have no digital signature. Windows may display an unknown-publisher or security warning when installing or launching them. Using the portable version does not guarantee avoiding these warnings.
+- **No clean-Windows installation test:** this release has not been tested on a pristine Windows VM or a new Windows account. Tests with isolated empty app storage passed, but they are not a clean operating-system installation test.
+- **Installer lifecycle checks were not repeated for 0.1.1:** earlier installation, upgrade, uninstallation, and data-preservation results are documented in the [September 7 verification report](docs/installer-verification.md). Interactive installer screens were not tested.
+
 ## Features
 
 - Multiple named Saved Setups, each with its own archive folder, issue selection, download options, and optional schedule.
@@ -198,7 +204,7 @@ This writes `dist\TWIC-Archive-Manager-Portable.zip` in place, including the use
 
 For a release, commit the source used for both packages and create a new version tag at that exact commit. Upload the portable ZIP and Setup.exe to that tag's release so its automatic **Source code** downloads match the binaries. Do not move an existing published tag to a different commit.
 
-The current installer is unsigned. Background install, upgrade, uninstall, clean-settings, and data-preservation checks were completed on Windows 11; see the [verification report](docs/installer-verification.md) for actual results and limitations. A pristine Windows VM/new Windows account and interactive installer screens were not tested.
+See [Known release limitations](#known-release-limitations-011) above and the [verification report](docs/installer-verification.md) for the scope and dates of the installer checks.
 
 For background/terminal use, the app also supports `sync --profile "Setup name"` and `combine --profile "Setup name"`. For example, from the repository folder:
 
