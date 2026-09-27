@@ -60,6 +60,13 @@ try {
         Remove-Item -LiteralPath $portableFolder -Recurse -Force
     }
     Move-Item -LiteralPath $stagedFolder -Destination $portableFolder
+
+    # Keep the redistributable build self-describing and license-complete.
+    Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination $portableFolder
+    Copy-Item -LiteralPath (Join-Path $projectRoot "THIRD_PARTY_NOTICES.md") -Destination $portableFolder
+    $portableLicenses = Join-Path $portableFolder "licenses"
+    New-Item -ItemType Directory -Force -Path $portableLicenses | Out-Null
+    Copy-Item -LiteralPath (Join-Path $projectRoot "licenses\LGPL-3.0.txt") -Destination $portableLicenses
 }
 finally {
     if ($null -eq $oldCacheDirectory) {
