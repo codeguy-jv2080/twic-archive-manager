@@ -188,6 +188,16 @@ This rebuilds the canonical portable app and packages it as `dist\TWIC-Archive-M
 
 Publishing is separate from building: attach `TWIC-Archive-Manager-Setup.exe` to a GitHub Release so the beginner guide's download instructions have an installer asset to point to. No installer is uploaded by either build script.
 
+Create the portable download from the same build:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\package_portable.py
+```
+
+This writes `dist\TWIC-Archive-Manager-Portable.zip` in place, including the user guides and license documents. Packaging rejects unexpected files and checks bundled license documents against the source copies. Saved Setups, preferences, databases, logs, and archives must remain outside the distribution.
+
+For a release, commit the source used for both packages and create a new version tag at that exact commit. Upload the portable ZIP and Setup.exe to that tag's release so its automatic **Source code** downloads match the binaries. Do not move an existing published tag to a different commit.
+
 The current installer is unsigned. Background install, upgrade, uninstall, clean-settings, and data-preservation checks were completed on Windows 11; see the [verification report](docs/installer-verification.md) for actual results and limitations. A pristine Windows VM/new Windows account and interactive installer screens were not tested.
 
 For background/terminal use, the app also supports `sync --profile "Setup name"` and `combine --profile "Setup name"`. For example, from the repository folder:

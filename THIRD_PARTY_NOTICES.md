@@ -10,6 +10,8 @@ Third-party components retain their own copyrights and license terms.
   and the notices supplied by the installed PySide6/Qt distribution.
 - **CPython runtime components** — copyright Python Software Foundation and
   contributors, under the Python Software Foundation License and related notices.
+  The packaged Python 3.10 runtime's license collection is included in
+  `licenses/Python-LICENSE.txt`, including its bundled OpenSSL, bzip2, and libffi notices.
 - **SQLite**, when supplied through Python — public domain.
 - **Nuitka** is used as a build tool and retains its own license terms.
 

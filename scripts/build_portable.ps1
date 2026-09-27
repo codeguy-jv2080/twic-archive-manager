@@ -61,12 +61,13 @@ try {
     }
     Move-Item -LiteralPath $stagedFolder -Destination $portableFolder
 
-    # Keep the redistributable build self-describing and license-complete.
+    # Preserve the project's license documents and bundled runtime notices.
     Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination $portableFolder
     Copy-Item -LiteralPath (Join-Path $projectRoot "THIRD_PARTY_NOTICES.md") -Destination $portableFolder
     $portableLicenses = Join-Path $portableFolder "licenses"
     New-Item -ItemType Directory -Force -Path $portableLicenses | Out-Null
     Copy-Item -LiteralPath (Join-Path $projectRoot "licenses\LGPL-3.0.txt") -Destination $portableLicenses
+    Copy-Item -LiteralPath (Join-Path $projectRoot "licenses\Python-LICENSE.txt") -Destination $portableLicenses
 }
 finally {
     if ($null -eq $oldCacheDirectory) {
