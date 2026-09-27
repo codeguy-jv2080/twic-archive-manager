@@ -29,8 +29,12 @@ $portableExe = Join-Path $projectRoot 'dist\TWIC Archive Manager\TWIC Archive Ma
 if (-not (Test-Path -LiteralPath $portableExe)) {
     throw "Build the portable app first: $portableExe"
 }
+$allowedDocumentationNames = @('LICENSE', 'THIRD_PARTY_NOTICES.md', 'LGPL-3.0.txt')
 $unexpectedFiles = @(Get-ChildItem -LiteralPath (Split-Path $portableExe) -Recurse -File -Force |
-    Where-Object { $_.Extension -notin @('.exe', '.dll', '.pyd') })
+    Where-Object {
+        $_.Extension -notin @('.exe', '.dll', '.pyd') -and
+        $_.Name -notin $allowedDocumentationNames
+    })
 if ($unexpectedFiles.Count -gt 0) {
     throw 'The portable build contains unexpected non-program files. Installer packaging stopped; no user data or settings may be included.'
 }
