@@ -1,5 +1,9 @@
 # TWIC Archive Manager
 
+> **Please support Mark Crowther and The Week in Chess.**
+>
+> This app relies on the TWIC archives Mark provides. If you find it useful, please consider **[donating through the official TWIC website](https://theweekinchess.com/)** to support his work and help keep the site going. Use the donation options on the site to contribute directly to TWIC.
+
 This is the advanced/reference guide. New users: start with the separate [Beginner Guide](BEGINNER_GUIDE.md), including installer download and first-run instructions. Published setup files are listed under [GitHub Releases](https://github.com/codeguy-jv2080/twic-archive-manager/releases).
 
 A standalone Windows desktop app for downloading and extracting The Week in Chess (TWIC) archives. Save different archive locations and issue selections, sync them manually or on a schedule, and optionally combine extracted PGNs into one file.
