@@ -198,3 +198,7 @@ For background/terminal use, the app also supports `sync --profile "Setup name"`
 ```
 
 These commands use the saved setup and return an exit code: `0` for success, `1` for an operation failure, `2` for invalid configuration or no PGNs to combine, `3` for an unavailable archive folder, and `4` for cancellation.
+
+## License
+
+TWIC Archive Manager is licensed under GPL-3.0-or-later. See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
