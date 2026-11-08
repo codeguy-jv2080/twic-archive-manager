@@ -14,6 +14,8 @@ from .archive import (
     NoExtractedPgns,
     combine_extracted_pgns,
     download_file,
+    extracted_pgn_sources,
+    extract_pgn_issue,
     extract_zip,
 )
 from .archive_lock import archive_operation
@@ -469,13 +471,63 @@ def extract_profile(
         return result
 
 
-def combine_profile(profile_identifier: str | int | dict[str, object]) -> CombineResult:
-    """Manually combine a Saved Setup's extracted PGNs."""
+def combine_profile(
+    profile_identifier: str | int | dict[str, object],
+    *,
+    issue_range: tuple[int, int] | None = None,
+    on_event: EventCallback | None = None,
+) -> CombineResult:
+    """Combine local PGNs, extracting missing issues from existing ZIPs only."""
 
+    if issue_range is not None:
+        _validate_selection(Selection.issue_range(*issue_range))
     initialize_database()
     profile = _resolve_profile(profile_identifier)
     archive_root = str(profile.get("archive_root") or "").strip()
     if not archive_root:
         raise ConfigurationError("Saved Setup has no archive location.")
     with archive_operation(archive_root):
-        return combine_extracted_pgns(ArchiveLayout.create(archive_root))
+        layout = ArchiveLayout.create(archive_root)
+        extracted_issues = {
+            issue for issue, _ in extracted_pgn_sources(layout, issue_range=issue_range)
+        }
+        archives = []
+        for zip_path in layout.downloads("pgn").iterdir():
+            if not zip_path.is_file() or zip_path.suffix.lower() != ".zip":
+                continue
+            match = re.match(r"^twic\D*(\d+)", zip_path.stem, re.IGNORECASE)
+            if not match:
+                continue
+            issue = int(match.group(1))
+            if issue > 0 and (issue_range is None or issue_range[0] <= issue <= issue_range[1]):
+                archives.append((issue, zip_path))
+        archives.sort(key=lambda item: (item[0], item[1].name.lower()))
+
+        if issue_range is not None:
+            available_issues = extracted_issues | {issue for issue, _ in archives}
+            missing = issue_range[1] - issue_range[0] + 1 - len(available_issues)
+            if missing:
+                _emit(on_event, SyncEvent(
+                    "info", f"No local PGN or ZIP for {missing} selected issue(s); "
+                    "combining the available issues only.",
+                ))
+
+        pending = [(issue, path) for issue, path in archives if issue not in extracted_issues]
+        for completed, (issue, zip_path) in enumerate(pending):
+            if issue in extracted_issues:
+                continue
+            _emit(on_event, SyncEvent(
+                "extract", f"Extracting TWIC {issue} PGN from {zip_path.name} for combining; keeping ZIP.",
+                issue, "pgn", completed, len(pending) + 1,
+            ))
+            try:
+                extract_pgn_issue(zip_path, layout.extracted_root("pgn"), issue)
+            except Exception as error:
+                raise ValueError(f"Cannot extract TWIC {issue} PGN from {zip_path.name}: {error}") from error
+            extracted_issues.add(issue)
+
+        _emit(on_event, SyncEvent(
+            "info", "Combining selected local PGNs." if issue_range else "Combining local PGNs.",
+            completed=len(pending), total=len(pending) + 1,
+        ))
+        return combine_extracted_pgns(layout, issue_range=issue_range)

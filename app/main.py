@@ -232,9 +232,17 @@ def create_desktop_callbacks() -> DesktopCallbacks:
         )
         return {"message": _sync_message(result)}
 
-    def combine(setup: SavedSetup, reporter: OperationReporter) -> dict[str, str]:
-        reporter.status("Combining extracted PGNs…")
-        result = combine_profile(_profile_identifier(setup))
+    def combine(setup: SavedSetup, request: SelectionRequest, reporter: OperationReporter) -> dict[str, str]:
+        issue_range = None
+        if request.mode.value == "range":
+            selection = _selection_from_request(request)
+            issue_range = (selection.start_issue, selection.end_issue)
+        reporter.status("Preparing local PGNs to combine…")
+        result = combine_profile(
+            _profile_identifier(setup),
+            issue_range=issue_range,
+            on_event=lambda event: _report_sync_event(reporter, event),
+        )
         message = f"Combined {result.pgn_files} PGN file(s) into {result.output_path.name}."
         reporter.progress(1, 1, message)
         return {"message": message}

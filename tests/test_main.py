@@ -16,6 +16,33 @@ def _reporter() -> OperationReporter:
     return OperationReporter(lambda *_: None, lambda _: None, lambda _: None, Event())
 
 
+@pytest.mark.parametrize("selection_request,expected_range", [
+    (SelectionRequest(mode=SelectionMode.RANGE, start_issue=970, end_issue=972), (970, 972)),
+    (SelectionRequest(mode=SelectionMode.LATEST, latest_count=2), None),
+    (SelectionRequest(mode=SelectionMode.FROM_THROUGH_NEWEST, start_issue=970), None),
+])
+def test_combine_callback_passes_range_and_reports_extraction(monkeypatch, selection_request, expected_range):
+    messages, statuses, progress = [], [], []
+    reporter = OperationReporter(
+        lambda *values: progress.append(values), messages.append, statuses.append, Event(),
+    )
+    setup = SavedSetup(id=7, name="Combine fixture", archive_root=r"C:\Archive")
+
+    def combine(selected, *, issue_range, on_event):
+        assert selected == 7
+        assert issue_range == expected_range
+        on_event(main.SyncEvent("extract", "Extracting TWIC 970 PGN.", completed=0, total=2))
+        return SimpleNamespace(pgn_files=2, output_path=Path("twic-all.pgn"))
+
+    monkeypatch.setattr(main, "combine_profile", combine)
+    result = main.create_desktop_callbacks().combine(setup, selection_request, reporter)
+    final = "Combined 2 PGN file(s) into twic-all.pgn."
+    assert result == {"message": final}
+    assert messages == ["Extracting TWIC 970 PGN."]
+    assert statuses[-1] == "Extracting TWIC 970 PGN."
+    assert progress[-1] == (1, 1, final)
+
+
 def test_desktop_callbacks_save_and_store_schedule(tmp_path: Path, monkeypatch) -> None:
     database = tmp_path / "state" / "twic.db"
     monkeypatch.setattr("app.database.database_path", lambda: database)

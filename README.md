@@ -10,11 +10,11 @@ A standalone Windows desktop app for downloading and extracting The Week in Ches
 
 The interface uses Python and PySide6 (Qt). It does not require a browser, FastAPI server, or localhost connection. The packaged app includes its Python runtime, so a separate Python installation is not needed to use it. Internet access is needed for downloads and, when required by your selection, to identify the newest TWIC issue; settings and archive files stay on your computer or your chosen network drive.
 
-## Known release limitations (0.1.1)
+## Known release limitations (0.1.2)
 
 - **Unsigned installer and portable app:** both `TWIC-Archive-Manager-Setup.exe` and the portable `TWIC Archive Manager.exe` have no digital signature. Windows may display an unknown-publisher or security warning when installing or launching them. Using the portable version does not guarantee avoiding these warnings.
 - **No clean-Windows installation test:** this release has not been tested on a pristine Windows VM or a new Windows account. Tests with isolated empty app storage passed, but they are not a clean operating-system installation test.
-- **Installer lifecycle checks were not repeated for 0.1.1:** earlier installation, upgrade, uninstallation, and data-preservation results are documented in the [September 7 verification report](docs/installer-verification.md). Interactive installer screens were not tested.
+- **Installer lifecycle checks were not repeated for 0.1.2:** earlier installation, upgrade, uninstallation, and data-preservation results are documented in the [September 7 verification report](docs/installer-verification.md). Interactive installer screens were not tested.
 
 ## Features
 
@@ -25,6 +25,7 @@ The interface uses Python and PySide6 (Qt). It does not require a browser, FastA
 - Manual **Extract ZIP** button for existing downloads, without another sync or download.
 - Extract into shared PGN and CBV folders without adding per-issue subfolders.
 - Create a combined `twic-all.pgn` manually or optionally after a sync. Automatic combining is off by default.
+- Manually combine an inclusive issue range using extracted PGNs, downloaded ZIPs, or both, without downloading again or deleting ZIPs.
 - Optional daily, weekly, or monthly Windows Task Scheduler runs. Scheduling is off by default.
 - Visible Activity messages, progress, errors, cancellation during sync, and a Clear Activity button.
 - Prevent simultaneous sync/combine operations from writing to the same archive folder on the same Windows computer.
@@ -118,15 +119,24 @@ This action uses all existing TWIC ZIPs in the selected format folders, not the 
 
 ## Create a combined PGN
 
-Select a Saved Setup and click **Create Combined PGN**. This combines the TWIC-named `.pgn` files directly inside that setup's `Extracted\PGN` folder in ascending issue order and writes `Combined\twic-all.pgn`.
+Select a Saved Setup and click **Create Combined PGN**. To combine a particular range, choose **Issue range** under **What to Download**, enter the first and last issue, and click **Save Setup** before combining. The result is written in ascending issue order to `Combined\twic-all.pgn`.
 
-- It uses all matching extracted PGNs in that folder, not just the current **What to Download** selection.
+**The three Options checkboxes do not need to be checked for this button.** It extracts missing PGNs even when **Extract ZIP files** is off, always keeps its ZIP inputs even when **Keep ZIP files after extraction** is off, and does not require **Automatically create combined PGN**. These settings still control Sync and the separate **Extract ZIP** action as described above.
+
+**Want every available issue in your range? Sync first if your local files are not up to date.** Select **PGN**, choose the range, save the setup, and click **Sync** to download missing ZIPs. Review Activity for failures or unavailable issues, then click **Create Combined PGN**. You can leave **Extract ZIP files** and automatic combining off for this download-then-combine workflow. If you do enable extraction during Sync and want to retain the ZIPs, also enable **Keep ZIP files after extraction**.
+
+Selecting beyond your local files does not trigger downloads when combining. For example, if you select **1600–1650** but have only **1600–1640**, the button combines those available issues and reports the missing count in Activity. The result is a partial-range file; if no selected issues are available, the previous combined file is not replaced.
+
+- With **Issue range** selected, only issues within that inclusive range are combined. Other extracted issues and ZIPs are left alone.
+- It uses existing TWIC-named PGNs in `Extracted\PGN`. When a selected issue is not extracted, it extracts the matching PGN from its existing ZIP in `Downloads\PGN` first. This works even with the Sync extraction option off.
+- ZIPs used by **Create Combined PGN** are always kept, regardless of **Keep ZIP files after extraction**. Existing PGNs are not overwritten. The button makes no website requests and downloads nothing.
+- Issues missing locally are reported in Activity; available issues are still combined. If no matching PGNs or usable ZIPs exist, the previous combined file is left unchanged. A damaged ZIP or one without its matching PGN reports an error before replacing the combined file.
+- The other selection modes retain the existing combine-all behavior: all locally available TWIC PGNs are used, including those extracted from existing ZIPs. They do not restrict combining to the latest count or starting issue.
 - It rebuilds/replaces `twic-all.pgn`; it does not append another copy to the previous combined file. The individual source files remain unchanged.
-- It does not extract ZIPs for you. Extract them with Sync first if needed.
 - It joins the PGN contents without editing games or removing duplicate games.
 - It does not combine CBV files or convert PGNs into ChessBase or Scid databases.
 
-To run this automatically after syncs, check **Automatically create combined PGN after download/extraction** and click **Save Setup**. PGN downloading must also be enabled. Available extracted PGNs are combined even if a requested ZIP is unavailable; download failures remain visible in Activity. Canceling a sync does not trigger automatic combining. Otherwise, combining happens only when you click its button.
+To run combining automatically after syncs, check **Automatically create combined PGN after download/extraction** and click **Save Setup**. PGN downloading must also be enabled. Automatic combining retains its existing behavior: it combines all available extracted PGNs, not just the selected range, and does not separately extract remaining ZIPs. Available extracted PGNs are combined even if a requested ZIP is unavailable; download failures remain visible in Activity. Canceling a sync does not trigger automatic combining. Otherwise, combining happens only when you click its button.
 
 ## Automatic scheduling
 
@@ -218,6 +228,8 @@ For background/terminal use, the app also supports `sync --profile "Setup name"`
 ```
 
 These commands use the saved setup and return an exit code: `0` for success, `1` for an operation failure, `2` for invalid configuration or no PGNs to combine, `3` for an unavailable archive folder, and `4` for cancellation.
+
+The terminal `combine` command retains combine-all behavior and can extract missing PGNs from local ZIPs; it does not apply the setup's saved issue range. Use the desktop **Create Combined PGN** button for range-limited combining.
 
 ## License
 

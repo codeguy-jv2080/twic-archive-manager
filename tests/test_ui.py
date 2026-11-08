@@ -207,6 +207,58 @@ def test_extract_button_processes_saved_zip_without_network_or_combining(tmp_pat
         qt_app.processEvents()
 
 
+def test_combine_button_uses_range_and_local_zips_without_deleting_them(tmp_path, monkeypatch):
+    from app.database import create_profile, initialize_database
+    from app.main import create_desktop_callbacks
+    from app.services.archive import ArchiveLayout
+
+    monkeypatch.setattr("app.database.database_path", lambda: tmp_path / "state.db")
+    messages = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: messages.append(args[-1]))
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("Manual combine must not sync, download, or look up issues")
+
+    for target in ("app.main.sync_profile", "app.services.sync.download_file",
+                   "app.services.sync.fetch_latest_issue", "app.services.archive.urlopen",
+                   "app.services.catalog.urlopen"):
+        monkeypatch.setattr(target, forbidden)
+    initialize_database()
+    setup = create_profile(
+        name="Combine fixture", archive_root=str(tmp_path / "archive"),
+        default_selection_mode="range", default_selection_value="970-971",
+        extract_archives=False, keep_zip_files=False,
+    )
+    layout = ArchiveLayout.create(setup["archive_root"])
+    outside = layout.extracted_root("pgn") / "twic969.pgn"
+    outside.write_bytes(b'[Event "outside"]\n')
+    zip_bytes = {}
+    for issue in (970, 971, 972):
+        downloaded = layout.downloads("pgn") / f"twic{issue}g.zip"
+        with zipfile.ZipFile(downloaded, "w") as archive:
+            archive.writestr(f"twic{issue}.pgn", f'[Event "{issue}"]\n')
+        zip_bytes[downloaded] = downloaded.read_bytes()
+
+    qt_app = QApplication.instance() or QApplication([])
+    window = TwicArchiveManagerWindow(create_desktop_callbacks())
+    try:
+        window.combine_button.click()
+        _wait_for_operation(window, qt_app)
+        assert messages == []
+        assert layout.combined_pgn_path.read_bytes() == b'[Event "970"]\n\n\n[Event "971"]\n'
+        assert outside.read_bytes() == b'[Event "outside"]\n'
+        assert not (layout.extracted_root("pgn") / "twic972.pgn").exists()
+        assert all(path.read_bytes() == original for path, original in zip_bytes.items())
+        final = "Combined 2 PGN file(s) into twic-all.pgn."
+        assert window.status_label.text() == final
+        assert window.log_output.toPlainText().count(final) == 1
+        assert window.combine_button.isEnabled()
+    finally:
+        _wait_for_operation(window, qt_app)
+        window.close()
+        qt_app.processEvents()
+
+
 def test_fresh_installed_window_does_not_load_portable_choices(tmp_path, monkeypatch):
     from app import settings
     from app.database import create_profile, initialize_database, set_app_setting

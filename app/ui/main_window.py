@@ -264,7 +264,7 @@ SaveSetup = Callable[[SavedSetup], SavedSetup | Mapping[str, object] | None]
 DeleteSetup = Callable[[SavedSetup], None]
 SyncSetup = Callable[[SavedSetup, SelectionRequest, OperationReporter], object]
 ExtractZips = Callable[[SavedSetup, OperationReporter], object]
-CombinePgns = Callable[[SavedSetup, OperationReporter], object]
+CombinePgns = Callable[[SavedSetup, SelectionRequest, OperationReporter], object]
 ApplySchedule = Callable[[SavedSetup, str], object]
 ViewSchedule = Callable[[SavedSetup], object]
 
@@ -961,11 +961,12 @@ class TwicArchiveManagerWindow(QMainWindow):
     @Slot()
     def start_combine(self) -> None:
         setup = self._selected_setup_or_error()
-        if setup is None:
+        request = self._selection_request()
+        if setup is None or request is None:
             return
         self._start_operation(
             "Combining PGNs…",
-            lambda reporter: self._callbacks.combine(setup, reporter),
+            lambda reporter: self._callbacks.combine(setup, request, reporter),
             cancellable=False,
         )
 

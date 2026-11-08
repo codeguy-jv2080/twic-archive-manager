@@ -82,9 +82,23 @@ Select the Saved Setup and click **Extract ZIP**. It unpacks the existing downlo
 
 ## 5. Optional: make one combined PGN
 
-After extracting PGNs, click **Create Combined PGN**. The result is **Combined\twic-all.pgn** inside your archive folder.
+Select your Saved Setup and click **Create Combined PGN**. The result is **Combined\twic-all.pgn** inside your archive folder. You can start with extracted PGNs, downloaded PGN ZIPs, or both. The button extracts missing PGNs from the ZIPs already there, keeps those ZIPs, and downloads nothing.
 
-This combines all TWIC PGNs in that setup's **Extracted\PGN** folder, in issue order—not just the issues currently selected for downloading. It replaces the previous combined file and leaves the individual PGNs alone. It does not remove duplicate games or combine CBV files.
+For a specific range, choose **Issue range** under **What to Download**, enter the first and last issue, click **Save Setup**, then **Create Combined PGN**. Only that range is combined; other issues remain untouched. Activity reports issues missing locally. If none of the selected issues are available, the existing combined file is left alone.
+
+**You do not need to check all the options.** For this manual button:
+
+- **Extract ZIP files** can be off: the button extracts missing PGNs itself.
+- **Keep ZIP files after extraction** can be off: the button always keeps the ZIPs it uses.
+- **Automatically create combined PGN** can be off: that option is for combining after Sync.
+
+**If your ZIPs are not up to date, Sync the range first.** Select **PGN**, choose your issue range, click **Save Setup**, then **Sync**. Sync uses existing ZIPs and downloads missing ones. For this workflow you can leave extraction and automatic combining off; **Create Combined PGN** will handle extraction afterward. If you do enable extraction during Sync, check **Keep ZIP files after extraction** to retain your ZIPs.
+
+Check Activity before combining: an issue unavailable from TWIC may still be missing. For example, selecting **1600–1650** when you only have **1600–1640** creates a combined file containing **1600–1640**, with the missing issues reported in Activity. Combining does not download the rest for you.
+
+With either of the other selection modes, the button still combines all locally available TWIC PGNs. Automatic combining after Sync also still combines all extracted PGNs, not just the selected range.
+
+Combining puts the issues in order, replaces the previous combined file, and leaves existing individual PGNs alone. It does not remove duplicate games or combine CBV files.
 
 You can leave this feature unused. It is not required for downloading or scheduling.
 
@@ -125,7 +139,7 @@ To uninstall, use Windows **Settings → Apps**, find **TWIC Archive Manager**, 
 
 ## If something goes wrong
 
-- **No extracted PGN files are available to combine:** if the PGN ZIPs are already downloaded, click **Extract ZIP** first. Otherwise, run Sync with **PGN** and **Extract ZIP files** enabled.
+- **No PGNs are available to combine:** check the Saved Setup's archive location and selected issue range. **Create Combined PGN** can use downloaded PGN ZIPs directly; if the issues are not downloaded yet, run Sync with **PGN** enabled first.
 - **A download fails:** read its Activity error and check your internet connection and archive location. Downloads are not automatically retried. An interrupted download can leave an incomplete ZIP; remove that affected ZIP before trying Sync again.
 - **Another operation is already using the archive folder:** let the other manual or scheduled operation finish before trying again.
 - **A scheduled run did not happen:** check **View Windows Task**, the chosen day/time, and whether the computer and archive folder were available.

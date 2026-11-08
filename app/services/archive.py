@@ -134,9 +134,13 @@ def extract_zip(zip_path: Path, destination: Path) -> None:
         archive.extractall(destination)
 
 
-def combine_extracted_pgns(layout: ArchiveLayout) -> CombineResult:
-    """Combine extracted PGNs by ascending issue number into one PGN file."""
+def extracted_pgn_sources(
+    layout: ArchiveLayout, *, issue_range: tuple[int, int] | None = None,
+) -> list[tuple[int, Path]]:
+    """Find the existing TWIC PGNs, optionally limited to an inclusive range."""
 
+    if issue_range is not None and (issue_range[0] < 1 or issue_range[1] < issue_range[0]):
+        raise ValueError("The issue range must have positive, ascending bounds.")
     sources: list[tuple[int, Path]] = []
     root = layout.extracted_root("pgn")
     if root.exists():
@@ -145,12 +149,52 @@ def combine_extracted_pgns(layout: ArchiveLayout) -> CombineResult:
                 continue
             issue_match = re.search(r"twic\D*(\d+)", pgn_path.stem, re.IGNORECASE)
             if issue_match:
-                sources.append((int(issue_match.group(1)), pgn_path))
-
-    if not sources:
-        raise NoExtractedPgns("No extracted PGN files are available to combine.")
+                issue_number = int(issue_match.group(1))
+                if issue_range is None or issue_range[0] <= issue_number <= issue_range[1]:
+                    sources.append((issue_number, pgn_path))
 
     sources.sort(key=lambda item: (item[0], item[1].as_posix().lower()))
+    return sources
+
+
+def extract_pgn_issue(zip_path: Path, destination: Path, issue_number: int) -> None:
+    """Extract only this issue's PGNs, retaining the ZIP and existing files."""
+
+    contents: dict[str, tuple[str, bytes]] = {}
+    with zipfile.ZipFile(zip_path) as archive:
+        for member in archive.infolist():
+            if member.is_dir():
+                continue
+            # Keep the flat archive layout; never use a ZIP member's parent path.
+            name = member.filename.replace("\\", "/").rsplit("/", 1)[-1]
+            if ":" in name or Path(name).suffix.lower() != ".pgn":
+                continue
+            issue_match = re.search(r"twic\D*(\d+)", Path(name).stem, re.IGNORECASE)
+            if issue_match and int(issue_match.group(1)) == issue_number:
+                # Read before creating files so a bad ZIP cannot leave a partial PGN.
+                contents.setdefault(name.lower(), (name, archive.read(member)))
+
+    if not contents:
+        raise ValueError(f"ZIP contains no PGN for TWIC {issue_number}.")
+    destination.mkdir(parents=True, exist_ok=True)
+    for name, content in contents.values():
+        target = destination / name
+        if not target.exists():
+            with target.open("xb") as output:
+                output.write(content)
+
+
+def combine_extracted_pgns(
+    layout: ArchiveLayout, *, issue_range: tuple[int, int] | None = None,
+) -> CombineResult:
+    """Combine extracted PGNs by ascending issue number into one PGN file."""
+
+    sources = extracted_pgn_sources(layout, issue_range=issue_range)
+
+    if not sources:
+        if issue_range is not None:
+            raise NoExtractedPgns("No extracted PGN files are available in the selected issue range.")
+        raise NoExtractedPgns("No extracted PGN files are available to combine.")
 
     layout.combined_directory.mkdir(parents=True, exist_ok=True)
     files = 0

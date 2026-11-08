@@ -49,6 +49,35 @@ def test_packaged_combine_and_archive_contention(tmp_path: Path, monkeypatch) ->
 
 
 @pytest.mark.skipif(not os.environ.get("TWIC_PACKAGED_EXE"), reason="Requires a built Windows executable")
+def test_packaged_manual_combine_extracts_local_zips_and_preserves_them(tmp_path, monkeypatch):
+    executable = Path(os.environ["TWIC_PACKAGED_EXE"]).resolve(strict=True)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "appdata"))
+    initialize_database()
+    root = tmp_path / "archive"
+    create_profile(
+        name="ZIP combine test", archive_root=str(root),
+        extract_archives=False, keep_zip_files=False,
+    )
+    layout = ArchiveLayout.create(root)
+    downloaded = layout.downloads("pgn") / "twic970g.zip"
+    payload = b'[Event "packaged ZIP combine"]\n'
+    with zipfile.ZipFile(downloaded, "w") as archive:
+        archive.writestr("twic970.pgn", payload)
+    original_zip = downloaded.read_bytes()
+
+    result = subprocess.run(
+        [str(executable), "combine", "--profile", "ZIP combine test"],
+        capture_output=True, text=True, timeout=20,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert layout.combined_pgn_path.read_bytes() == payload
+    assert (layout.extracted_root("pgn") / "twic970.pgn").read_bytes() == payload
+    assert downloaded.read_bytes() == original_zip
+
+
+@pytest.mark.skipif(not os.environ.get("TWIC_PACKAGED_EXE"), reason="Requires a built Windows executable")
 def test_packaged_auto_combine_keeps_available_pgn_after_archive_failure(tmp_path, monkeypatch):
     executable = Path(os.environ["TWIC_PACKAGED_EXE"]).resolve(strict=True)
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "appdata"))
